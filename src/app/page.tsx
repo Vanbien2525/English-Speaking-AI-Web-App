@@ -26,12 +26,18 @@ export default function HomePage() {
         <p className="max-w-2xl text-lg text-ink-muted">
           Nền tảng luyện nói cá nhân hóa kết hợp AI chấm điểm âm vị và mô phỏng giải phẫu 3D — chạy hoàn toàn trên máy của bạn.
         </p>
-        <div>
+        <div className="flex flex-wrap items-center gap-4">
           <Link
             href="/practice"
-            className="inline-flex min-h-11 items-center rounded-xl bg-primary px-6 font-semibold text-canvas"
+            className="inline-flex min-h-11 items-center rounded-xl bg-primary px-6 font-semibold text-canvas hover:brightness-110 transition-all shadow-md"
           >
-            Vào phòng luyện phát âm
+            Vào phòng luyện phát âm 3D
+          </Link>
+          <Link
+            href="/learn"
+            className="inline-flex min-h-11 items-center rounded-xl bg-surface-raised border border-border-subtle px-6 font-semibold text-ink hover:border-primary/50 transition-all"
+          >
+            Khám phá Bản đồ 44 Âm IPA & Bài học
           </Link>
         </div>
       </header>
