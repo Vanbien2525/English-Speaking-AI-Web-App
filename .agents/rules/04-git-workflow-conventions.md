@@ -56,8 +56,11 @@ Before staging and committing, always execute `git status` and `git diff --stage
 2. **Automated CI Verification:**
    - GitHub Actions triggers automatically, initializes dependent service containers (e.g., PostgreSQL 16), and runs test/lint suites.
    - Google Labs Jules evaluates source code security, business logic integrity, and performance boundaries.
-3. **Autonomous Self-Healing (Jules):**
-   - If tests fail or vulnerabilities are detected, Jules autonomously drafts fixes and commits remediation changes directly to the active PR branch.
+3. **Google Labs Jules Operational Contract (Learned Pattern):**
+   - **Prerequisites:** Repository root MUST contain `AGENTS.md` specifying Node.js >=22.0.0, resilient install `npm ci || npm install`, strict test commands `npm test`, `npx tsc --noEmit`, and `npm run lint`.
+   - **Issue-Triggered Autonomous Execution:** Applying the label `jules` to any GitHub Issue automatically dispatches Google Labs Jules to comment on the issue, spin up an isolated Google Cloud VM, implement code, execute `npm test` until 100% green, and submit a PR.
+   - **PR Verification & Web Dashboard:** Jules can be monitored or dispatched directly via `https://jules.google.com` or configured via `google-labs-code/jules-action` with `JULES_API_KEY`.
+   - If tests fail during execution, Jules captures the failure trace and applies self-healing code updates autonomously.
    - The CI pipeline re-triggers automatically to validate the patched state.
 4. **Human Merge Authority & Strategy:**
    - Merging is permitted only when both GitHub Actions and Jules report full approval (Passed ✅).
