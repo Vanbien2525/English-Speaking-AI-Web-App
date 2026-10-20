@@ -16,12 +16,12 @@
 - [x] Giai đoạn 5: Squash and Merge PR #1 vào main (Commit `82b6f6c`), đóng PR #3 thử nghiệm
 - [x] Giai đoạn 5: Dọn dẹp branch & xuất bản báo cáo nghiệm thu `.agents/reports/feature-01-practice-studio-3d.md`
 
-## [ ] Vòng Lặp Tính Năng Đang Thực Hiện: [Tính Năng 2: Bản Đồ 44 Âm Vị IPA & Phân Hệ Danh Mục Bài Học CEFR]
-- [ ] Giai đoạn 2: /grill-me khảo sát kiến trúc Bản đồ IPA (Heatmap mức độ thành thạo, Bộ lọc CEFR A1-C2, Tật phát âm người Việt)
-- [ ] Giai đoạn 3: Wireframe Stitch & Kế hoạch Sub-components
-- [ ] Giai đoạn 4 - Lượt 1: Backend TDD Red-to-Green (API bài học, liên kết âm vị và mastery)
-- [ ] Giai đoạn 4 - Lượt 2: Frontend SSR/SSG Siêu tốc (0KB Three.js, Design DNA OKLCH, Motion Cards)
-- [ ] Giai đoạn 5: Mở 1 PR duy nhất, CI & Jules Audit thẩm định
+## [>] Vòng Lặp Tính Năng Đang Thực Hiện: [Tính Năng 2: Bản Đồ 44 Âm Vị IPA & Phân Hệ Danh Mục Bài Học CEFR]
+- [x] Giai đoạn 2: /grill-me khảo sát kiến trúc Bản đồ IPA -> Đã lưu .agents/specs/ipa-map-and-lessons.spec.md
+- [x] Giai đoạn 3: Wireframe Stitch (Screen 0ffff379) & Kế hoạch Sub-components -> Đã lưu plan.md
+- [x] Giai đoạn 4 - Lượt 1: Backend TDD Red-to-Green Pass 100% (20/20 curriculum tests green, 52/52 total suite green)
+- [x] Giai đoạn 4 - Lượt 2: Frontend SSR/SSG Siêu tốc (0KB Three.js, Design DNA OKLCH, Motion Cards, 58/58 tests green)
+- [>] Giai đoạn 5: Mở 1 PR duy nhất, CI & Jules Audit thẩm định
 
 ## [ ] Giai Đoạn Phát Hành (Final Release)
 - [ ] Chạy Full Regression Test Suite Pass 100%
