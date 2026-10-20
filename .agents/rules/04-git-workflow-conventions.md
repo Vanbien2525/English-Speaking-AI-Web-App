@@ -49,6 +49,11 @@ Before staging and committing, always execute `git status` and `git diff --stage
   - Refactor: `refactor/<task-name>` (e.g., `refactor/modular-cards`)
 
 ## 4. Pull Request (PR) Lifecycle & Autonomous CI (GitHub Actions & Jules)
+
+> [!IMPORTANT]
+> **Single PR per Feature Mandate (Bắt buộc Duy Nhất 1 PR Mỗi Tính Năng):**
+> Mỗi vòng đời tính năng chỉ được phép tồn tại **DUY NHẤT 1 Pull Request** từ `feature/<name>` vào `main`.
+> Toàn bộ quá trình kiểm thử CI và audit/sửa lỗi của Google Labs Jules ở Giai đoạn 5 bắt buộc phải diễn ra trên cùng nhánh `feature/<name>` của PR đó. Jules phải commit trực tiếp vào nhánh tính năng hiện có để cập nhật thẳng vào PR duy nhất, giúp Tech Lead chỉ cần review và merge 1 lần duy nhất.
 1. **Open Pull Request:**
    - Head (Source): `feature/<branch-name>`
    - Base (Target): `main`

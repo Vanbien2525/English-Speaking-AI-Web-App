@@ -128,6 +128,12 @@ Adhere strictly to Clean Layered Architecture:
 
 ## 7. Jules Autonomous Execution & Pull Request Checklist
 
+> [!IMPORTANT]
+> **SINGLE PULL REQUEST MANDATE (BẮT BUỘC DUY NHẤT 1 PR MỖI TÍNH NĂNG):**
+> Every feature development cycle MUST operate within **EXACTLY ONE Pull Request**.
+> Jules must NEVER create separate, auxiliary, or fragmented Pull Requests for code reviews, security audits, or bug fixes.
+> All review findings, test additions, and self-healing code fixes MUST be committed directly to the active feature branch (`feature/<feature-name>`), updating the primary Pull Request in place.
+
 When Jules is assigned a task or triggered on a Pull Request:
 
 1. **Step 1: Environment Sanity Check:** Verify `node -v` and run `npm ci || npm install`.

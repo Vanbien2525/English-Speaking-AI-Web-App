@@ -11,7 +11,7 @@
 - [x] Giai đoạn 3: Khung Stitch Wireframe & StitchMCP kết nối -> plan.md đã duyệt
 - [x] Giai đoạn 4 - Lượt 1: Backend PostgreSQL Pass 100% Test (26/26 tests green, ACID transactions, Idempotency, SLA Timeout 1500ms)
 - [x] Giai đoạn 4 - Lượt 2: Frontend Awwwards Luxury Polish Pass (OralCavityModel 3D Sagittal Cross-Section, AudioRecordDock, IpaBreakdownCard, 32/32 tests green)
-- [x] Giai đoạn 5: Chuẩn hóa AGENTS.md & Enterprise CI Pipeline Pass 100% (Run 39437178225 tích xanh ✅)
+- [x] Giai đoạn 5: Chuẩn hóa AGENTS.md với quy định bắt buộc Duy Nhất 1 PR Mỗi Tính Năng (Single PR Policy) & CI Pass 100% ✅
 - [x] Giai đoạn 5: Google Labs Jules chính thức hoạt động trơn tru (Issue #2 gắn nhãn `jules` đã được bot nhận việc và chạy cloud VM)
 - [ ] Giai đoạn 5: Bạn bấm nút Merge Pull Request #1 trên GitHub (Link: https://github.com/Vanbien2525/English-Speaking-AI-Web-App/pull/1)
 - [ ] Giai đoạn 5: Dọn dẹp branch & plan.md sau merge
