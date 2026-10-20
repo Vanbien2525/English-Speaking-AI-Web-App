@@ -10,3 +10,30 @@ tmp_*
 debug_*
 .DS_Store
 Thumbs.db
+
+# Next.js / TypeScript / test artifacts
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Generated 3D runtime assets (copied by scripts/copy-draco-decoder.mjs)
+public/draco/
+public/models/source/
+
+# Cached TTS reference audio (regenerable via edge-tts)
+public/audio/reference/
+
+# Python AI engine
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Model weights (never commit — download from Google Drive)
+*.gguf
+*.safetensors
+*.pt
+*.ckpt

@@ -69,7 +69,7 @@ jobs:
       if: steps.check_init.outputs.has_package == 'true'
       run: |
         if [ -f "package-lock.json" ]; then
-          npm ci
+          npm ci || npm install
         else
           npm install
         fi
