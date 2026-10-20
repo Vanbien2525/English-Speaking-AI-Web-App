@@ -16,14 +16,24 @@
 - [x] Giai đoạn 5: Squash and Merge PR #1 vào main (Commit `82b6f6c`), đóng PR #3 thử nghiệm
 - [x] Giai đoạn 5: Dọn dẹp branch & xuất bản báo cáo nghiệm thu `.agents/reports/feature-01-practice-studio-3d.md`
 
-## [>] Vòng Lặp Tính Năng Đang Thực Hiện: [Tính Năng 2: Bản Đồ 44 Âm Vị IPA & Phân Hệ Danh Mục Bài Học CEFR]
+## [x] Tính Năng 2: Bản Đồ 44 Âm Vị IPA & Phân Hệ Danh Mục Bài Học CEFR (HOÀN THÀNH 100%)
 - [x] Giai đoạn 2: /grill-me khảo sát kiến trúc Bản đồ IPA -> Đã lưu .agents/specs/ipa-map-and-lessons.spec.md
-- [x] Giai đoạn 3: Wireframe Stitch (Screen 0ffff379) & Kế hoạch Sub-components -> Đã lưu plan.md
+- [x] Giai đoạn 3: Wireframe Stitch (Screen 0ffff379) & Kế hoạch Sub-components -> Đã lưu .agents/plans/ipa-map-and-lessons.plan.md
 - [x] Giai đoạn 4 - Lượt 1: Backend TDD Red-to-Green Pass 100% (20/20 curriculum tests green, 52/52 total suite green)
 - [x] Giai đoạn 4 - Lượt 2: Frontend SSR/SSG Siêu tốc (0KB Three.js, Design DNA OKLCH, Motion Cards, 58/58 tests green)
-- [>] Giai đoạn 5: Đã mở PR #4 (https://github.com/Vanbien2525/English-Speaking-AI-Web-App/pull/4), gán nhãn `jules` và comment kích hoạt Jules Audit độc lập. Đang chờ Jules duyệt để Tech Lead Squash and Merge.
+- [x] Giai đoạn 5: Chuẩn hóa quy trình Golden Issue-First Jules Flow (Issue #5 gắn nhãn `jules` -> Jules Cloud VM verify -> Jules mở PR #6)
+- [x] Giai đoạn 5: Dual-Green Passed (Jules Playwright UI & Vitest Audit + GitHub Actions Enterprise CI Pipeline Xanh 100%)
+- [x] Giai đoạn 5: Squash and Merge PR #6 vào main (Commit `97557cd`), dọn dẹp branch & đóng PR #4 trùng lặp
+- [x] Giai đoạn 5: Xuất bản báo cáo nghiệm thu `.agents/reports/feature-02-ipa-map-and-lessons.md`
+
+## [>] Vòng Lặp Tính Năng Đang Chuẩn Bị: [Tính Năng 3: Bảng Thành Tích, Biểu Đồ Tiến Độ, Chuỗi Ngày Học (Streak) & Sổ Cái XP]
+- [ ] Giai đoạn 2: /grill-me khảo sát kiến trúc Gamification, Streak Recovery & XP Ledger
+- [ ] Giai đoạn 3: Wireframe Stitch & Plan TDD Red-to-Green
+- [ ] Giai đoạn 4: Triển khai Backend ACID Ledger & Frontend Luxury Dashboard
+- [ ] Giai đoạn 5: Kích hoạt Jules qua Issue-First Single PR & CI Dual-Green
 
 ## [ ] Giai Đoạn Phát Hành (Final Release)
 - [ ] Chạy Full Regression Test Suite Pass 100%
 - [ ] Security Audit & Database Index Tuning Pass
 - [ ] Jules Approve Release v1.0.0
+

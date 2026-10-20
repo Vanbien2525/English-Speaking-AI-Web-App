@@ -152,10 +152,10 @@ erDiagram
 
 ```text
 HỆ THỐNG LUYỆN PHÁT ÂM TIẾNG ANH AI 3D (AI SPEAKING TUTOR 3D)
-├── 1. Phân hệ Khung Giao Diện Tĩnh Siêu Tốc (SSR/SSG Core Shell — 0KB Three.js)
+├── [x] 1. Phân hệ Khung Giao Diện Tĩnh Siêu Tốc (SSR/SSG Core Shell — 0KB Three.js) [HOÀN THÀNH 100%]
 │   ├── [x] 1.1. Trang chủ giới thiệu & Điều hướng nhanh vào Phòng Luyện Phát Âm
-│   ├── [>] 1.2. Bản đồ 44 Âm vị IPA (IPA Phonetic Chart) hiển thị mức độ thành thạo theo màu Design DNA
-│   ├── [>] 1.3. Danh mục Bài học phân theo CEFR & Tật phát âm đặc trưng của người Việt
+│   ├── [x] 1.2. Bản đồ 44 Âm vị IPA (IPA Phonetic Chart) hiển thị mức độ thành thạo theo màu Design DNA
+│   ├── [x] 1.3. Danh mục Bài học phân theo CEFR & Tật phát âm đặc trưng của người Việt
 │   └── [ ] 1.4. Bảng Thành tích, Biểu đồ Tiến độ, Chuỗi ngày học (Streak) & Sổ cái XP
 │
 ├── [x] 2. Phân hệ Phòng Luyện Phát Âm 3D (Practice Studio — On-Demand Lazy Loaded) [HOÀN THÀNH 100%]
