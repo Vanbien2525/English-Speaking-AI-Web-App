@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-describe("Core Web Vitals & 0KB Three.js Bundle Isolation Guardrail (FEAT-IPA-MAP-AND-LESSONS)", () => {
+describe("Core Web Vitals & 0KB Three.js Bundle Isolation Guardrail (FEAT-IPA-MAP-AND-LESSONS & FEAT-GAMIFICATION-AND-PROGRESS)", () => {
   const PROHIBITED_IMPORT_PATTERNS = [
     /from\s+['"]three['"]/,
     /from\s+['"]@react-three\//,
@@ -28,13 +28,19 @@ describe("Core Web Vitals & 0KB Three.js Bundle Isolation Guardrail (FEAT-IPA-MA
     return files;
   }
 
-  it("khẳng định toàn bộ module curriculum và route /learn tuyệt đối không chứa import Three.js hoặc R3F", () => {
+  it("khẳng định toàn bộ module curriculum, progress dashboard và route /learn, /progress tuyệt đối không chứa import Three.js hoặc R3F", () => {
     const targetDirs = [
       path.resolve(process.cwd(), "src/app/learn"),
       path.resolve(process.cwd(), "src/modules/curriculum"),
       path.resolve(process.cwd(), "src/core/dto/curriculum.dto.ts"),
       path.resolve(process.cwd(), "src/core/repositories/curriculum-repository.ts"),
       path.resolve(process.cwd(), "src/core/services/curriculum-service.ts"),
+      path.resolve(process.cwd(), "src/app/progress"),
+      path.resolve(process.cwd(), "src/modules/progress"),
+      path.resolve(process.cwd(), "src/core/dto/progress.dto.ts"),
+      path.resolve(process.cwd(), "src/core/repositories/progress-repository.ts"),
+      path.resolve(process.cwd(), "src/core/services/progress-service.ts"),
+      path.resolve(process.cwd(), "src/core/services/leaderboard-service.ts"),
     ];
 
     const sourceFiles: string[] = [];
@@ -48,8 +54,8 @@ describe("Core Web Vitals & 0KB Three.js Bundle Isolation Guardrail (FEAT-IPA-MA
       }
     }
 
-    // Expect at least curriculum repository, service, and DTO files
-    expect(sourceFiles.length).toBeGreaterThanOrEqual(3);
+    // Expect at least curriculum & progress files
+    expect(sourceFiles.length).toBeGreaterThanOrEqual(6);
 
     const violations: Array<{ file: string; match: string }> = [];
 
@@ -59,7 +65,7 @@ describe("Core Web Vitals & 0KB Three.js Bundle Isolation Guardrail (FEAT-IPA-MA
         if (pattern.test(content)) {
           violations.push({
             file: path.relative(process.cwd(), filePath),
-            match: pattern.toString(),
+            match: content.match(pattern)?.[0] ?? "unknown",
           });
         }
       }
@@ -67,9 +73,9 @@ describe("Core Web Vitals & 0KB Three.js Bundle Isolation Guardrail (FEAT-IPA-MA
 
     expect(
       violations,
-      `Phát hiện rò rỉ Three.js vào module học liệu tĩnh:\n${violations
-        .map((v) => ` - ${v.file}: trùng khớp pattern ${v.match}`)
+      `Phát hiện vi phạm Bundle Isolation! Three.js hoặc R3F bị rò rỉ vào module SSR siêu tốc:\n${violations
+        .map((v) => `  - ${v.file}: ${v.match}`)
         .join("\n")}`,
-    ).toEqual([]);
+    ).toHaveLength(0);
   });
 });

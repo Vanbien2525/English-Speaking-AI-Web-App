@@ -39,6 +39,12 @@ export default function HomePage() {
           >
             Khám phá Bản đồ 44 Âm IPA & Bài học
           </Link>
+          <Link
+            href="/progress"
+            className="inline-flex min-h-11 items-center rounded-xl bg-surface-raised border border-border-subtle px-6 font-semibold text-ink hover:border-amber-400/50 transition-all"
+          >
+            🔥 Bảng Thành Tích & Sổ Cái XP
+          </Link>
         </div>
       </header>
 

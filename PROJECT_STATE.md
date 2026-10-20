@@ -26,10 +26,11 @@
 - [x] Giai đoạn 5: Squash and Merge PR #6 vào main (Commit `97557cd`), dọn dẹp branch & đóng PR #4 trùng lặp
 - [x] Giai đoạn 5: Xuất bản báo cáo nghiệm thu `.agents/reports/feature-02-ipa-map-and-lessons.md`
 
-## [>] Vòng Lặp Tính Năng Đang Chuẩn Bị: [Tính Năng 3: Bảng Thành Tích, Biểu Đồ Tiến Độ, Chuỗi Ngày Học (Streak) & Sổ Cái XP]
-- [ ] Giai đoạn 2: /grill-me khảo sát kiến trúc Gamification, Streak Recovery & XP Ledger
-- [ ] Giai đoạn 3: Wireframe Stitch & Plan TDD Red-to-Green
-- [ ] Giai đoạn 4: Triển khai Backend ACID Ledger & Frontend Luxury Dashboard
+## [>] Vòng Lặp Tính Năng Đang Triển Khai: [Tính Năng 3: Bảng Thành Tích, Biểu Đồ Tiến Độ, Chuỗi Ngày Học (Streak) & Sổ Cái XP]
+- [x] Giai đoạn 2: /grill-me khảo sát kiến trúc Gamification, Streak Recovery & XP Ledger -> Đã lưu .agents/specs/gamification-and-progress.spec.md
+- [x] Giai đoạn 3: Wireframe Stitch (Screen fee2e116) & Kế hoạch Sub-components -> Đã lưu .agents/plans/gamification-and-progress.plan.md
+- [x] Giai đoạn 4 - Lượt 1: Backend TDD Red-to-Green Pass 100% (24/24 gamification tests green, 82/82 total suite green, ACID transactions, Idempotency, Streak Normalizer)
+- [x] Giai đoạn 4 - Lượt 2: Frontend SSR/SSG Siêu tốc (0KB Three.js, Pure SVG 6-Axis Radar & 30-Day Trendline, Design DNA OKLCH, 91/91 tests green, build pass)
 - [ ] Giai đoạn 5: Kích hoạt Jules qua Issue-First Single PR & CI Dual-Green
 
 ## [ ] Giai Đoạn Phát Hành (Final Release)
