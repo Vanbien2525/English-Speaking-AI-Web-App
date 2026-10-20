@@ -330,6 +330,17 @@ def export_to_google_drive(source_dir: str = "/content/models", drive_target: st
         drive.mount('/content/drive')
         os.makedirs(drive_target, exist_ok=True)
         
+        # Copy checkpoints and models
+        if os.path.exists(source_dir):
+            shutil.copytree(source_dir, drive_target, dirs_exist_ok=True)
+            logger.info(f"Copied all model checkpoints from {source_dir} to {drive_target}")
+        
+        # Backup datasets if present
+        data_dir = "/content/data"
+        if os.path.exists(data_dir):
+            shutil.copytree(data_dir, os.path.join(drive_target, "datasets_backup"), dirs_exist_ok=True)
+            logger.info("Backed up raw datasets to Google Drive.")
+        
         manifest = {
             "version": "1.0.0",
             "device": "NVIDIA A100 40GB/80GB High-RAM",
@@ -344,7 +355,7 @@ def export_to_google_drive(source_dir: str = "/content/models", drive_target: st
         with open(os.path.join(drive_target, "metadata_manifest.json"), "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2)
             
-        logger.info(f"All model weights and manifests exported to Google Drive: {drive_target}")
+        logger.info(f"All model weights, GGUF files and manifests exported to Google Drive: {drive_target}")
     except Exception as e:
         logger.warning(f"Google Drive export skipped (not running inside Colab): {e}")
 
