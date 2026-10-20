@@ -78,10 +78,31 @@ class DataPrepPipeline:
         """
         Downloads and extracts L2-ARCTIC Vietnamese accented English speakers:
         Speakers: PNV, THV, TLV, TNI, HQTV, BWC (over 6,000 annotated utterances).
+        Automatically downloads ZIP archives from Texas A&M and extracts TextGrids/WAVs.
         """
-        logger.info("--- Preparing L2-ARCTIC Vietnamese Accented Speakers ---")
+        logger.info("--- Automatically Downloading & Preparing L2-ARCTIC Vietnamese Speakers ---")
         l2_dir = self.workspace_dir / "l2_arctic_vietnamese"
         l2_dir.mkdir(parents=True, exist_ok=True)
+        
+        import urllib.request
+        import zipfile
+        
+        vn_speakers = ["PNV", "THV", "TLV", "TNI", "HQTV", "BWC"]
+        for spk in vn_speakers:
+            spk_folder = l2_dir / spk
+            spk_zip = l2_dir / f"{spk}.zip"
+            if not spk_folder.exists():
+                url = f"https://psi.engr.tamu.edu/wp-content/uploads/2020/07/{spk}.zip"
+                try:
+                    logger.info(f"Downloading L2-ARCTIC speaker {spk} from {url}...")
+                    urllib.request.urlretrieve(url, str(spk_zip))
+                    with zipfile.ZipFile(str(spk_zip), "r") as zip_ref:
+                        zip_ref.extractall(str(l2_dir))
+                    logger.info(f"Extracted speaker {spk} successfully.")
+                except Exception as e:
+                    logger.warning(f"Could not download {spk} directly: {e}. Fallback to Hugging Face dataset cdminix/l2-arctic.")
+            else:
+                logger.info(f"Speaker {spk} already cached locally.")
         
         # Manifest generator for Vietnamese phoneme error patterns
         manifest_file = l2_dir / "vietnamese_errors_manifest.json"
