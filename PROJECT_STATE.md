@@ -11,7 +11,7 @@
 - [x] Giai đoạn 3: Khung Stitch Wireframe & StitchMCP kết nối -> plan.md đã duyệt
 - [x] Giai đoạn 4 - Lượt 1: Backend PostgreSQL Pass 100% Test (26/26 tests green, ACID transactions, Idempotency, SLA Timeout 1500ms)
 - [x] Giai đoạn 4 - Lượt 2: Frontend Awwwards Luxury Polish Pass (OralCavityModel 3D Sagittal Cross-Section, AudioRecordDock, IpaBreakdownCard, 32/32 tests green)
-- [ ] Giai đoạn 5: GitHub Jules Review & Tích xanh APPROVED
+- [ ] Giai đoạn 5: GitHub Jules Review & Tích xanh APPROVED (Đã mở PR #1: https://github.com/Vanbien2525/English-Speaking-AI-Web-App/pull/1)
 - [ ] Giai đoạn 5: Bạn bấm nút Merge Pull Request trên GitHub
 - [ ] Giai đoạn 5: Dọn dẹp plan.md & file rác
 
