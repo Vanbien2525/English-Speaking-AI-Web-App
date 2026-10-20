@@ -145,38 +145,43 @@ erDiagram
 
 ## 3. Cây Phân Rã Chức Năng (Functional Decomposition Tree)
 
+> **Quy ước trạng thái:**  
+> `[x]` : Đã hoàn thành 100% (Kiểm thử Pass, Merged vào `main`).  
+> `[>]` : Tính năng đang triển khai trong vòng lặp hiện tại.  
+> `[ ]` : Hạng mục trong lộ trình chờ phát triển (Backlog).
+
 ```text
 HỆ THỐNG LUYỆN PHÁT ÂM TIẾNG ANH AI 3D (AI SPEAKING TUTOR 3D)
 ├── 1. Phân hệ Khung Giao Diện Tĩnh Siêu Tốc (SSR/SSG Core Shell — 0KB Three.js)
-│   ├── 1.1. Trang chủ giới thiệu & Điều hướng nhanh vào Phòng Luyện Phát Âm
-│   ├── 1.2. Bản đồ 44 Âm vị IPA (IPA Phonetic Chart) hiển thị mức độ thành thạo theo màu Design DNA
-│   ├── 1.3. Danh mục Bài học phân theo CEFR & Tật phát âm đặc trưng của người Việt
-│   └── 1.4. Bảng Thành tích, Biểu đồ Tiến độ, Chuỗi ngày học (Streak) & Sổ cái XP
+│   ├── [x] 1.1. Trang chủ giới thiệu & Điều hướng nhanh vào Phòng Luyện Phát Âm
+│   ├── [>] 1.2. Bản đồ 44 Âm vị IPA (IPA Phonetic Chart) hiển thị mức độ thành thạo theo màu Design DNA
+│   ├── [>] 1.3. Danh mục Bài học phân theo CEFR & Tật phát âm đặc trưng của người Việt
+│   └── [ ] 1.4. Bảng Thành tích, Biểu đồ Tiến độ, Chuỗi ngày học (Streak) & Sổ cái XP
 │
-├── 2. Phân hệ Phòng Luyện Phát Âm 3D (Practice Studio — On-Demand Lazy Loaded)
-│   ├── 2.1. Bộ nạp 3D Cô lập Lỗi (Dynamic Loader `ssr: false` + Skeleton CLS=0 + ErrorBoundary)
-│   ├── 2.2. Mô hình Giải phẫu Khoang miệng 3D (Oral Cavity & Vocal Tract: Môi, Răng, Lưỡi, Vòm họng)
-│   ├── 2.3. Điều khiển Khẩu hình theo Âm vị (Blendshapes / Morph Targets nội suy mượt ở 60 FPS)
-│   ├── 2.4. Chế độ X-Ray Xuyên thấu (Làm mờ má/môi ngoài để nhìn rõ đầu lưỡi chạm răng/ngạc cứng)
-│   └── 2.5. Điều phối Timeline Đa phương tiện bằng GSAP:
-│            Nghe giọng mẫu -> Zoom góc camera 3D -> Chạy sóng âm -> Hiển thị lỗi & Đếm số điểm (Counter)
+├── [x] 2. Phân hệ Phòng Luyện Phát Âm 3D (Practice Studio — On-Demand Lazy Loaded) [HOÀN THÀNH 100%]
+│   ├── [x] 2.1. Bộ nạp 3D Cô lập Lỗi (Dynamic Loader `ssr: false` + Skeleton CLS=0 + ErrorBoundary)
+│   ├── [x] 2.2. Mô hình Giải phẫu Khoang miệng 3D (Oral Cavity & Vocal Tract: Môi, Răng, Lưỡi, Vòm họng)
+│   ├── [x] 2.3. Điều khiển Khẩu hình theo Âm vị (Blendshapes / Morph Targets nội suy mượt ở 60 FPS)
+│   ├── [x] 2.4. Chế độ X-Ray Xuyên thấu (Làm mờ má/môi ngoài để nhìn rõ đầu lưỡi chạm răng/ngạc cứng)
+│   └── [x] 2.5. Điều phối Timeline Đa phương tiện bằng GSAP:
+│                Nghe giọng mẫu -> Zoom góc camera 3D -> Chạy sóng âm -> Hiển thị lỗi & Đếm số điểm (Counter)
 │
-├── 3. Phân hệ Thu Âm Không Rác & Sóng Âm (Zero-Footprint Web Audio Pipeline)
-│   ├── 3.1. Thu âm trực tiếp trên RAM trình duyệt (Web Audio API PCM 16kHz Mono Blob)
-│   ├── 3.2. Hiển thị sóng âm thời gian thực & So sánh sóng âm (Wavesurfer.js)
-│   └── 3.3. Cơ chế tự động thu hồi bộ nhớ (`URL.revokeObjectURL`) ngay khi thu lượt mới hoặc đổi bài
+├── [x] 3. Phân hệ Thu Âm Không Rác & Sóng Âm (Zero-Footprint Web Audio Pipeline) [HOÀN THÀNH 100%]
+│   ├── [x] 3.1. Thu âm trực tiếp trên RAM trình duyệt (Web Audio API PCM 16kHz Mono Blob)
+│   ├── [x] 3.2. Hiển thị sóng âm thời gian thực & So sánh sóng âm (Wavesurfer.js)
+│   └── [x] 3.3. Cơ chế tự động thu hồi bộ nhớ (`URL.revokeObjectURL`) ngay khi thu lượt mới hoặc đổi bài
 │
 ├── 4. Phân hệ AI Chấm Điểm Âm Vị & Gia Sư Sư Phạm (Hybrid Speech AI Engine)
-│   ├── 4.1. Cổng Adapter Đa nguồn (`SpeechAssessmentPort`): Chuyển đổi mượt giữa Local FastAPI và Cloud
-│   ├── 4.2. Căn chỉnh mốc thời gian từ/âm vị chuẩn xác tới mili-giây (WhisperX Forced Alignment)
-│   ├── 4.3. Tính điểm GOP (Goodness of Pronunciation) & Phát hiện lỗi Thêm/Bớt/Thay thế âm (Wav2Vec2)
-│   ├── 4.4. Gia sư AI giải thích cách sửa vị trí môi/răng/lưỡi bằng tiếng Việt & Sinh chuỗi lệnh 3D (Llama 3.1)
-│   └── 4.5. Tổng hợp Giọng đọc Mẫu chuẩn Hoàng gia Anh (British RP `en-GB-SoniaNeural` / `en-GB-RyanNeural`)
+│   ├── [x] 4.1. Cổng Adapter Đa nguồn (`SpeechAssessmentPort`): Chuyển đổi mượt giữa Local FastAPI và Cloud
+│   ├── [ ] 4.2. Căn chỉnh mốc thời gian từ/âm vị chuẩn xác tới mili-giây (WhisperX Forced Alignment)
+│   ├── [ ] 4.3. Tính điểm GOP (Goodness of Pronunciation) & Phát hiện lỗi Thêm/Bớt/Thay thế âm (Wav2Vec2)
+│   ├── [ ] 4.4. Gia sư AI giải thích cách sửa vị trí môi/răng/lưỡi bằng tiếng Việt & Sinh chuỗi lệnh 3D (Llama 3.1)
+│   └── [ ] 4.5. Tổng hợp Giọng đọc Mẫu chuẩn Hoàng gia Anh (British RP `en-GB-SoniaNeural` / `en-GB-RyanNeural`)
 │
-└── 5. Phân hệ Lưu Trữ Giao Dịch & Gamification (PostgreSQL Persistence)
-    ├── 5.1. Ghi nhận kết quả chấm điểm chống trùng lặp (`idempotency_key`) trong 1 Transaction ACID
-    ├── 5.2. Cập nhật chỉ số thành thạo âm vị (`user_phoneme_mastery`) & Điểm cao nhất bài học
-    └── 5.3. Cộng điểm XP qua Sổ cái (`xp_ledger` với `SELECT ... FOR UPDATE`) & Mở khóa Huy hiệu
+└── [x] 5. Phân hệ Lưu Trữ Giao Dịch & Gamification (PostgreSQL Persistence) [HOÀN THÀNH 100%]
+    ├── [x] 5.1. Ghi nhận kết quả chấm điểm chống trùng lặp (`idempotency_key`) trong 1 Transaction ACID
+    ├── [x] 5.2. Cập nhật chỉ số thành thạo âm vị (`user_phoneme_mastery`) & Điểm cao nhất bài học
+    └── [x] 5.3. Cộng điểm XP qua Sổ cái (`xp_ledger` với `SELECT ... FOR UPDATE`) & Mở khóa Huy hiệu
 ```
 
 ---
