@@ -73,7 +73,7 @@ class LlamaTutorService:
             )
 
             async def _req():
-                timeout = httpx.Timeout(self.timeout_s, connect=0.5)
+                timeout = httpx.Timeout(self.timeout_s, connect=1.0)
                 async with httpx.AsyncClient(timeout=timeout) as client:
                     return await client.post(
                         f"{self.ollama_url}/api/generate",
@@ -82,7 +82,11 @@ class LlamaTutorService:
                             "prompt": prompt,
                             "stream": False,
                             "format": "json",
-                            "options": {"temperature": 0.3, "num_ctx": 2048},
+                            "options": {
+                                "temperature": 0.2,
+                                "num_ctx": 1024,
+                                "num_predict": 100,
+                            },
                         },
                     )
 

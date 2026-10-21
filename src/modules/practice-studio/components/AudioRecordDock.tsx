@@ -63,8 +63,10 @@ export function AudioRecordDock() {
       });
     } catch (err: unknown) {
       const error = err as Error;
-      toast.error(`Chấm điểm thất bại: ${error.message}`, { id: "scoring-toast" });
       setRecordingState("error");
+      setTimeout(() => {
+        toast.error(`Chấm điểm thất bại: ${error.message}`, { id: "scoring-toast" });
+      }, 0);
     } finally {
       setIsSubmitting(false);
     }

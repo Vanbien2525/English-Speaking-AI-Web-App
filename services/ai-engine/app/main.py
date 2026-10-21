@@ -24,6 +24,31 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing AI Speaking Tutor Engine...")
     logger.info(f"Target Model Directory: {settings.model_dir}")
     logger.info(f"Ollama Target URL: {settings.ollama_url}")
+
+    # Warm up Ollama in background so first user request doesn't suffer cold start
+    import asyncio
+    async def _warmup_ollama():
+        try:
+            from app.services.net_utils import is_service_reachable
+            import httpx
+            if is_service_reachable(settings.ollama_url, timeout=0.1):
+                logger.info(f"Pre-warming Ollama model '{settings.ollama_model}'...")
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    await client.post(
+                        f"{settings.ollama_url}/api/generate",
+                        json={
+                            "model": settings.ollama_model,
+                            "prompt": "hi",
+                            "stream": False,
+                            "options": {"num_predict": 1},
+                        },
+                    )
+                logger.info("Ollama model successfully pre-warmed in memory.")
+        except Exception as e:
+            logger.warning(f"Ollama warmup skipped: {e}")
+
+    asyncio.create_task(_warmup_ollama())
+
     yield
     logger.info("Shutting down AI Speaking Tutor Engine.")
 

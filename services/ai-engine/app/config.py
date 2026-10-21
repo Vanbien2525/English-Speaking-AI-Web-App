@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     # Ollama integration
     ollama_url: str = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
     ollama_model: str = os.getenv("OLLAMA_MODEL", "speaking-tutor-llama3")
-    ollama_timeout_s: float = 3.0
+    ollama_timeout_s: float = 12.0
 
     # TTS settings
     default_tts_voice: str = "en-GB-SoniaNeural"
