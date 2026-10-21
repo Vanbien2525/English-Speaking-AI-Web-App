@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function IpaChartPage() {
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-8 lg:px-12">
       <PhonemicChart />
     </main>
   );

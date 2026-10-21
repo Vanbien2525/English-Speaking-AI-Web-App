@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import {
+  Shuffle,
   CheckCircle2,
   Sparkles,
   RotateCcw,
@@ -26,38 +27,44 @@ export function MatchingPractice() {
   const [matchedIds, setMatchedIds] = useState<string[]>([]);
   const [wrongPair, setWrongPair] = useState<{ wordId: string; ipaId: string } | null>(null);
   const [roundScore, setRoundScore] = useState(0);
+  const [, startTransition] = useTransition();
 
-  // Initialize a round with 5 random vocabulary items from IPA dataset
+  // Initialize a round with 5 distinct random words
   const initRound = () => {
-    // Pick 5 distinct words from random phonemes
-    const allWords: MatchItem[] = [];
-    IPA_PHONEMES.forEach((p) => {
-      p.words.forEach((w) => {
-        allWords.push({
-          id: `${p.id}_${w.id}`,
-          word: w.word,
-          ipa: w.ipa,
-          meaningVi: w.meaningVi,
-        });
-      });
-    });
+    startTransition(() => {
+      // Pick 5 distinct words across phonemes
+      const allWords: MatchItem[] = [];
+      for (const p of IPA_PHONEMES) {
+        if (p.words.length > 0) {
+          const w = p.words[0]!;
+          allWords.push({
+            id: `${p.id}_${w.id}`,
+            word: w.word,
+            ipa: w.ipa,
+            meaningVi: w.meaningVi,
+          });
+        }
+        if (allWords.length >= 12) break;
+      }
 
-    // Shuffle and pick 5
-    const shuffled = [...allWords].sort(() => 0.5 - Math.random()).slice(0, 5);
-    setItems(shuffled);
-    setShuffledIpa([...shuffled].sort(() => 0.5 - Math.random()));
-    setMatchedIds([]);
-    setSelectedWordId(null);
-    setSelectedIpaId(null);
-    setWrongPair(null);
+      // Shuffle & pick 5
+      const chosen = [...allWords].sort(() => 0.5 - Math.random()).slice(0, 5);
+      const shuffled = [...chosen].sort(() => 0.5 - Math.random());
+
+      setItems(chosen);
+      setShuffledIpa(shuffled);
+      setMatchedIds([]);
+      setSelectedWordId(null);
+      setSelectedIpaId(null);
+      setWrongPair(null);
+    });
   };
 
   useEffect(() => {
-    const timer = setTimeout(initRound, 0);
-    return () => clearTimeout(timer);
+    initRound();
   }, []);
 
-  // Handle word selection
+  // Handle Word selection
   const handleSelectWord = (id: string) => {
     if (matchedIds.includes(id)) return;
     setSelectedWordId(id);
@@ -89,10 +96,10 @@ export function MatchingPractice() {
       setSelectedIpaId(null);
       setRoundScore((s) => s + 10);
 
-      // Play word sound
+      // Play word sound with British RP Male voice
       const matchedItem = items.find((i) => i.id === wordId);
       if (matchedItem) {
-        speechService.speak(matchedItem.word, 0.9);
+        speechService.speak(matchedItem.word, 0.88, 0.92);
       }
       toast.success("Khớp chính xác! +10 XP");
     } else {
@@ -118,7 +125,7 @@ export function MatchingPractice() {
           <div>
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">
-                Minigame Nối Từ & Phiên Âm
+                Minigame Nối Từ &amp; Phiên Âm
               </span>
               <span className="text-xs font-semibold text-slate-500">
                 Đã nối: {matchedIds.length} / {items.length}
@@ -128,7 +135,7 @@ export function MatchingPractice() {
               Ghép Thẻ Mặt Chữ &amp; Ký Tự IPA
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Chạm hoặc click vào một từ bên trái, sau đó chọn phiên âm IPA tương ứng ở cột bên phải.
+              Chạm vào một từ bên cột 1, sau đó chọn phiên âm tương ứng ở cột 2 đối diện.
             </p>
           </div>
 
@@ -138,6 +145,7 @@ export function MatchingPractice() {
               <span>Điểm game:</span>
               <span className="text-emerald-600 font-extrabold text-sm">{roundScore} XP</span>
             </div>
+
             <button
               onClick={initRound}
               title="Làm mới bộ thẻ từ"
@@ -148,13 +156,17 @@ export function MatchingPractice() {
           </div>
         </div>
 
-        {/* Matching Board Grid */}
-        <div className="my-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+        {/* Matching Board Grid: Symmetrical 2 Columns (Requirement 7) */}
+        <div className="my-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {/* Left Column: English Words */}
           <div className="space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">
-              Cột 1: Từ Vựng Tiếng Anh
-            </span>
+            <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                Cột 1: Từ Vựng Tiếng Anh
+              </span>
+              <span className="text-[11px] font-semibold text-slate-400">5 Thẻ từ</span>
+            </div>
+
             {items.map((item) => {
               const isMatched = matchedIds.includes(item.id);
               const isSelected = selectedWordId === item.id;
@@ -164,7 +176,7 @@ export function MatchingPractice() {
                 <div
                   key={item.id}
                   onClick={() => handleSelectWord(item.id)}
-                  className={`flex items-center justify-between rounded-2xl border-2 p-4 transition-all select-none cursor-pointer ${
+                  className={`h-[76px] flex items-center justify-between rounded-2xl border-2 px-5 py-3.5 transition-all select-none cursor-pointer ${
                     isMatched
                       ? "bg-emerald-50 border-emerald-400 text-emerald-950 opacity-80 cursor-default"
                       : isWrong
@@ -174,20 +186,20 @@ export function MatchingPractice() {
                       : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs"
                   }`}
                 >
-                  <div>
-                    <span className="text-base font-bold text-slate-900 block">
+                  <div className="flex flex-col justify-center">
+                    <span className="text-base font-bold text-slate-900 block leading-tight">
                       {item.word}
                     </span>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-slate-400 block mt-0.5 truncate max-w-[200px]">
                       {item.meaningVi}
                     </span>
                   </div>
 
                   {isMatched ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                   ) : (
                     <div
-                      className={`h-4 w-4 rounded-full border-2 transition-colors ${
+                      className={`h-4 w-4 rounded-full border-2 transition-colors shrink-0 ${
                         isSelected ? "border-emerald-500 bg-emerald-500" : "border-slate-300"
                       }`}
                     />
@@ -197,11 +209,15 @@ export function MatchingPractice() {
             })}
           </div>
 
-          {/* Right Column: IPA Transcriptions */}
+          {/* Right Column: IPA Transcriptions - EXACT SAME HEIGHT & SYMMETRY */}
           <div className="space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">
-              Cột 2: Phiên Âm Chuẩn IPA
-            </span>
+            <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                Cột 2: Phiên Âm Chuẩn IPA
+              </span>
+              <span className="text-[11px] font-semibold text-slate-400">5 Phiên âm</span>
+            </div>
+
             {shuffledIpa.map((item) => {
               const isMatched = matchedIds.includes(item.id);
               const isSelected = selectedIpaId === item.id;
@@ -211,7 +227,7 @@ export function MatchingPractice() {
                 <div
                   key={`ipa_${item.id}`}
                   onClick={() => handleSelectIpa(item.id)}
-                  className={`flex items-center justify-between rounded-2xl border-2 p-4 transition-all select-none cursor-pointer ${
+                  className={`h-[76px] flex items-center justify-between rounded-2xl border-2 px-5 py-3.5 transition-all select-none cursor-pointer ${
                     isMatched
                       ? "bg-emerald-50 border-emerald-400 text-emerald-950 opacity-80 cursor-default"
                       : isWrong
@@ -221,17 +237,20 @@ export function MatchingPractice() {
                       : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="ipa text-lg font-bold text-slate-800">
+                  <div className="flex flex-col justify-center">
+                    <span className="ipa text-lg font-bold text-slate-800 block leading-tight">
                       {item.ipa}
+                    </span>
+                    <span className="text-xs text-slate-400 block mt-0.5">
+                      Phiên âm quốc tế
                     </span>
                   </div>
 
                   {isMatched ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                   ) : (
                     <div
-                      className={`h-4 w-4 rounded-full border-2 transition-colors ${
+                      className={`h-4 w-4 rounded-full border-2 transition-colors shrink-0 ${
                         isSelected ? "border-emerald-500 bg-emerald-500" : "border-slate-300"
                       }`}
                     />
@@ -248,14 +267,14 @@ export function MatchingPractice() {
             <Award className="h-10 w-10 mx-auto" />
             <h3 className="text-xl font-black">Xuất Sắc! Bạn Đã Nối Chính Xác Tất Cả</h3>
             <p className="text-xs text-emerald-100 max-w-md mx-auto">
-              Trí nhớ âm vị và mặt chữ của bạn đang cải thiện rất nhanh. Bấm bên dưới để bắt đầu bộ từ mới!
+              Tai nghe và mắt bạn đã nhận diện chính xác mối tương quan giữa mặt chữ tiếng Anh và phiên âm IPA.
             </p>
             <button
               onClick={initRound}
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-emerald-800 transition-all hover:bg-emerald-50 active:scale-95 shadow-sm"
+              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 active:scale-95"
             >
-              <RotateCcw className="h-4 w-4" />
-              <span>Chơi ván tiếp theo</span>
+              <Shuffle className="h-3.5 w-3.5" />
+              <span>Chơi Vòng Tiếp Theo</span>
             </button>
           </div>
         )}

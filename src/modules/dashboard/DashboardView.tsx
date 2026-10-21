@@ -15,6 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import { getStoredPhonemeScores, getStoredErrorWords } from "@/shared/lib/ipa-storage";
+import { getRealDailyStreak } from "@/shared/lib/streak-tracker";
 import { IPA_PHONEMES } from "@/core/data/ipa-dataset";
 import { speechService } from "@/shared/lib/speech";
 
@@ -22,12 +23,13 @@ export function DashboardView() {
   const [masteredCount, setMasteredCount] = useState(0);
   const [averageScore, setAverageScore] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
+  const [streakDays, setStreakDays] = useState(1);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const updateStats = () => {
       const scores = getStoredPhonemeScores();
       const scoreVals = Object.values(scores);
-      const mastered = scoreVals.filter((s) => s >= 85).length;
+      const mastered = scoreVals.filter((s) => s >= 80).length;
       setMasteredCount(mastered);
 
       if (scoreVals.length > 0) {
@@ -37,9 +39,18 @@ export function DashboardView() {
 
       const errors = getStoredErrorWords();
       setErrorCount(errors.length);
-    }, 0);
 
-    return () => clearTimeout(timer);
+      setStreakDays(getRealDailyStreak());
+    };
+
+    const timer = setTimeout(updateStats, 0);
+    window.addEventListener("storage", updateStats);
+    window.addEventListener("ast3d_ipa_storage_updated", updateStats);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("storage", updateStats);
+      window.removeEventListener("ast3d_ipa_storage_updated", updateStats);
+    };
   }, []);
 
   const progressPercent = Math.round((masteredCount / 44) * 100);
@@ -52,7 +63,7 @@ export function DashboardView() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1440px] space-y-10 px-4 py-8 sm:px-8 lg:px-12">
       {/* Welcome Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-xs">
         <div className="space-y-2">
@@ -63,7 +74,7 @@ export function DashboardView() {
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
             Hôm nay bạn muốn rèn luyện kỹ năng nào?
           </h1>
-          <p className="max-w-xl text-sm text-slate-600">
+          <p className="max-w-2xl text-sm text-slate-600">
             Hệ thống nhận diện âm vị AI sẽ theo dõi từng chuyển động phát âm, bóc tách lỗi thay thế âm và nuốt âm với độ chính xác cao.
           </p>
         </div>
@@ -75,11 +86,11 @@ export function DashboardView() {
           </div>
           <div>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-amber-900">3</span>
+              <span className="text-2xl font-black text-amber-900">{streakDays}</span>
               <span className="text-xs font-bold text-amber-700">Ngày liên tiếp</span>
             </div>
             <span className="text-[11px] font-semibold text-amber-600">
-              Duy trì ngọn lửa luyện tập!
+              {streakDays > 1 ? "Chuỗi ngày luyện tập bền bỉ!" : "Bắt đầu ngày học đầu tiên!"}
             </span>
           </div>
         </div>
@@ -90,7 +101,7 @@ export function DashboardView() {
         {/* Metric 1: Mastered Phonemes */}
         <div className="rounded-2xl border-2 border-slate-200/80 bg-white p-5 shadow-xs transition-all hover:shadow-md">
           <div className="flex items-center justify-between text-slate-500 mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider">Âm vị thành thạo</span>
+            <span className="text-xs font-bold uppercase tracking-wider">Âm vị thành thạo (≥80%)</span>
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </div>
           <div className="flex items-baseline gap-2">
@@ -118,7 +129,7 @@ export function DashboardView() {
             <span className="text-sm font-semibold text-slate-400">%</span>
           </div>
           <span className="mt-3 block text-xs font-medium text-emerald-600">
-            {averageScore >= 85 ? "Đẳng cấp Chuẩn Bản Xứ" : averageScore >= 70 ? "Phát âm Khá Tốt" : "Cần duy trì luyện tập"}
+            {averageScore >= 80 ? "Đẳng cấp Chuẩn Bản Xứ" : averageScore >= 60 ? "Phát âm Khá Tốt" : "Cần duy trì luyện tập"}
           </span>
         </div>
 
@@ -133,7 +144,7 @@ export function DashboardView() {
             <span className="text-sm font-semibold text-slate-400">từ</span>
           </div>
           <span className="mt-3 block text-xs font-medium text-slate-500">
-            {errorCount > 0 ? "Các từ đạt điểm < 70%" : "Chưa có từ nào bị lỗi"}
+            {errorCount > 0 ? "Các từ đạt điểm < 80%" : "Chưa có từ nào bị lỗi"}
           </span>
         </div>
 

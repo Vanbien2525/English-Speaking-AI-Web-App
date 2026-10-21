@@ -7,6 +7,7 @@ import {
   XCircle,
   Sparkles,
   ArrowRight,
+  RotateCcw,
 } from "lucide-react";
 import { MINIMAL_PAIRS_DATA } from "@/core/data/ipa-dataset";
 import { speechService } from "@/shared/lib/speech";
@@ -24,12 +25,12 @@ export function MinimalPairsPractice() {
   const activePairGroup = MINIMAL_PAIRS_DATA[selectedPairIndex] ?? MINIMAL_PAIRS_DATA[0]!;
   const currentPair = activePairGroup.pairs[currentWordIndex] ?? activePairGroup.pairs[0]!;
 
-  // Play audio of target word
+  // Play audio of target word with British RP Male voice
   const playTargetAudio = async () => {
     setIsPlaying(true);
     const targetWord = targetWordChoice === 1 ? currentPair.word1 : currentPair.word2;
     try {
-      await speechService.speak(targetWord, 0.85);
+      await speechService.speak(targetWord, 0.88, 0.92);
     } finally {
       setIsPlaying(false);
     }
@@ -37,7 +38,7 @@ export function MinimalPairsPractice() {
 
   // Play specific word audio for review
   const playWord = async (word: string) => {
-    await speechService.speak(word, 0.85);
+    await speechService.speak(word, 0.88, 0.92);
   };
 
   const handleSelectChoice = (choice: 1 | 2) => {
@@ -49,21 +50,30 @@ export function MinimalPairsPractice() {
       setScoreCount((prev) => prev + 1);
       toast.success("Chính xác! Bạn đã phân biệt đúng âm vị.");
     } else {
-      toast.error("Chưa chính xác! Hãy nghe lại để nhận ra sự khác biệt.");
+      toast.error("Chưa chính xác! Bạn có thể bấm nút 'Thử lại câu này' để nghe và chọn lại.");
     }
   };
 
-  const handleNextQuestion = () => {
-    setHasAnswered(false);
+  // Requirement 6: Allow user to retry current pair if selected wrong
+  const handleRetryCurrentQuestion = () => {
     setUserSelected(null);
-    setTargetWordChoice((prev) => (prev === 1 ? 2 : 1));
+    setHasAnswered(false);
+    playTargetAudio();
+  };
 
-    if (currentWordIndex + 1 < activePairGroup.pairs.length) {
+  const handleNextQuestion = () => {
+    setUserSelected(null);
+    setHasAnswered(false);
+
+    // Randomize next target word choice (1 or 2)
+    const nextChoice = Math.random() > 0.5 ? 1 : 2;
+    setTargetWordChoice(nextChoice as 1 | 2);
+
+    if (currentWordIndex < activePairGroup.pairs.length - 1) {
       setCurrentWordIndex((prev) => prev + 1);
     } else {
-      // Loop or advance
+      toast.success("Bạn đã hoàn thành toàn bộ cặp từ trong nhóm này!");
       setCurrentWordIndex(0);
-      toast.info("Đã hoàn thành vòng luyện tập của cặp âm này!");
     }
   };
 
@@ -83,13 +93,13 @@ export function MinimalPairsPractice() {
           <button
             key={group.id}
             onClick={() => switchPairGroup(idx)}
-            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
               selectedPairIndex === idx
                 ? "bg-emerald-500 text-white shadow-xs shadow-emerald-200"
                 : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
             }`}
           >
-            {group.title.split(" ")[0]} {group.title.split(" ")[1]} {group.title.split(" ")[2]}
+            {group.title}
           </button>
         ))}
       </div>
@@ -125,7 +135,7 @@ export function MinimalPairsPractice() {
         {/* Audio Prompt Player */}
         <div className="my-8 flex flex-col items-center justify-center space-y-3">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Bấm nút để nghe âm thanh phát ra
+            Bấm nút để nghe âm thanh phát ra (British RP Giọng Nam)
           </span>
 
           <button
@@ -261,14 +271,24 @@ export function MinimalPairsPractice() {
           </div>
         </div>
 
-        {/* Next Question Control */}
+        {/* Action Controls: Retry or Next */}
         {hasAnswered && (
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+            {userSelected !== targetWordChoice && (
+              <button
+                onClick={handleRetryCurrentQuestion}
+                className="inline-flex items-center gap-2 rounded-xl border-2 border-amber-300 bg-amber-50 px-5 py-2.5 text-sm font-bold text-amber-800 transition-all hover:bg-amber-100 active:scale-95 shadow-xs"
+              >
+                <RotateCcw className="h-4 w-4 text-amber-700" />
+                <span>Thử lại câu này</span>
+              </button>
+            )}
+
             <button
               onClick={handleNextQuestion}
               className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-emerald-600 active:scale-95 shadow-xs"
             >
-              <span>Câu hỏi tiếp theo</span>
+              <span>{userSelected === targetWordChoice ? "Câu hỏi tiếp theo" : "Bỏ qua & Tiếp tục"}</span>
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>

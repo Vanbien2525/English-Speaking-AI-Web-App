@@ -48,8 +48,8 @@ class Settings(BaseSettings):
     ollama_model: str = os.getenv("OLLAMA_MODEL", "speaking-tutor-llama3")
     ollama_timeout_s: float = 12.0
 
-    # TTS settings
-    default_tts_voice: str = "en-GB-SoniaNeural"
+    # TTS settings (Strictly British RP Male Voice - Ryan)
+    default_tts_voice: str = "en-GB-RyanNeural"
     default_tts_rate: str = "+0%"
 
     # Engine metadata
