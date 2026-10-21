@@ -46,10 +46,12 @@
 ## [>] Vòng Lặp Tiếp Theo: [Giai Đoạn Phát Hành - Final Release & Hardening]
 
 ## [x] Giai Đoạn Phát Hành (Final Release v1.0.0)
-- [x] Chạy Full Regression Test Suite Pass 100% (91/91 Vitest tests green + 2/2 Pytest AI Engine tests green)
+- [x] Chạy Full Regression Test Suite Pass 100% (91/91 Vitest tests green + 3/3 Pytest AI Engine tests green)
 - [x] TypeScript Strict Typecheck 0 lỗi (npm run typecheck)
 - [x] Next.js 16 Production Build thành công 100% (npm run build)
 - [x] Tích hợp E2E Microservice AI Engine (FastAPI) + Next.js BFF + Ollama Llama 3.1 8B Q4_K_M
+- [x] Cải tiến căn chỉnh âm vị (Target Phrase Alignment): phạt nặng điểm khi nói từ ngắn lạc đề (như 'hello' thay vì cả câu), tự động đánh dấu âm vị bỏ sót (deletion) và xuất cảnh báo tiếng Việt rõ ràng
+- [x] Dynamic Client Routing: Next.js BFF tự động chuyển đổi FastApiAiEngineClient sang FastAPI thực tế thay vì giữ Mock singleton
 - [x] Security Audit & Zero-Leakage Guardrails: .env.local bảo vệ an toàn trong .gitignore, không rò rỉ secret
 - [x] Sẵn sàng gắn thẻ Release v1.0.0 và chạy thực nghiệm E2E người dùng trên trình duyệt
 
