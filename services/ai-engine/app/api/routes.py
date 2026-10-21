@@ -88,7 +88,7 @@ async def assess_pronunciation(
     except Exception as e:
         logger.error(f"Audio decoding failure: {e}")
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Failed to decode audio bytes: {e}",
         )
 
