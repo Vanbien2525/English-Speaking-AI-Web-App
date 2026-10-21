@@ -1,0 +1,85 @@
+"""
+Integration & Contract Verification Tests for AI Speaking Tutor Microservice.
+Verifies /health and /api/v1/assess in-memory Zero-Footprint processing.
+"""
+import io
+import json
+import wave
+import numpy as np
+import pytest
+from fastapi.testclient import TestClient
+
+from app.main import app
+from app.domain.schemas import CreateAttemptMeta
+
+
+def create_dummy_wav_bytes(duration_s: float = 1.0, sr: int = 16000) -> bytes:
+    """Generate in-memory 16kHz mono sine wave audio for testing."""
+    num_samples = int(duration_s * sr)
+    t = np.linspace(0, duration_s, num_samples, endpoint=False)
+    # 440 Hz standard concert pitch A
+    audio = (0.5 * np.sin(2 * np.pi * 440 * t) * 32767).astype(np.int16)
+
+    bio = io.BytesIO()
+    with wave.open(bio, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sr)
+        wf.writeframes(audio.tobytes())
+    return bio.getvalue()
+
+
+@pytest.fixture
+def client():
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+def test_health_endpoint(client):
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "models" in data
+    assert "engine" in data
+    assert data["engine"] == "local_whisperx_wav2vec2"
+
+
+def test_assess_endpoint_with_in_memory_audio(client):
+    audio_bytes = create_dummy_wav_bytes(duration_s=1.2)
+    meta = {
+        "sessionId": "018f4a7c-87d0-7a32-9c10-234567890abc",
+        "lessonItemId": "018f4a7c-87d0-7a32-9c10-234567890def",
+        "idempotencyKey": "018f4a7c-87d0-7a32-9c10-234567890aaa",
+        "audioDurationMs": 1200,
+        "accent": "en-GB-RP",
+    }
+
+    response = client.post(
+        "/api/v1/assess",
+        files={"audio": ("sample.wav", audio_bytes, "audio/wav")},
+        data={"metadata": json.dumps(meta)},
+    )
+
+    assert response.status_code == 200
+    result = response.json()
+
+    # Verify response schema matching shared.dto.ts
+    assert result["engine"] == "local_whisperx_wav2vec2"
+    assert 0 <= result["overallScoreBp"] <= 10000
+    assert 0 <= result["accuracyBp"] <= 10000
+    assert 0 <= result["fluencyBp"] <= 10000
+    assert 0 <= result["completenessBp"] <= 10000
+    assert result["scoringLatencyMs"] >= 0
+    assert len(result["words"]) > 0
+
+    # Verify 3D Viseme timeline presence
+    assert "feedback" in result
+    assert "visemeTimeline" in result["feedback"]
+    assert len(result["feedback"]["visemeTimeline"]) > 0
+
+    first_viseme = result["feedback"]["visemeTimeline"][0]
+    assert "ipa" in first_viseme
+    assert "startMs" in first_viseme
+    assert "morphWeights" in first_viseme
+    assert "highlightParts" in first_viseme
