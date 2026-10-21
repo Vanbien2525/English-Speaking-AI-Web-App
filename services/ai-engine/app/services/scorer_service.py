@@ -77,7 +77,7 @@ class Wav2Vec2ScorerService:
         if self.model_loaded and self.backbone is not None and self.head is not None:
             try:
                 import torch
-                with torch.no_grad():
+                with torch.inference_mode():
                     inputs = torch.from_numpy(wav)[None].to(self.device)
                     hs = self.backbone(inputs).last_hidden_state.mean(dim=1)
                     logits = self.head(hs)

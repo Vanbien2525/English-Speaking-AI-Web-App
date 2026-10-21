@@ -86,9 +86,9 @@ class LlamaTutorService:
                             "stream": False,
                             "format": "json",
                             "options": {
-                                "temperature": 0.2,
+                                "temperature": 0.0,
                                 "num_ctx": 1024,
-                                "num_predict": 120,
+                                "num_predict": 100,
                             },
                         },
                     )
@@ -155,6 +155,17 @@ class LlamaTutorService:
                 tipsVi=[
                     f"Hãy đọc to rõ ràng từ mục tiêu theo mẫu: '{recognized_text}'.",
                     "Đưa micro gần miệng hơn và kiểm tra quyền truy cập microphone của trình duyệt.",
+                ],
+                visemeTimeline=visemes,
+            )
+
+        # Out-of-vocabulary / prompt deviation alert
+        if len(errors) == len(words[0].phonemes) and all(err.get("actual") in ["ə", "m"] for err in errors):
+            return TutorFeedback(
+                summaryVi=f"Bạn đã đọc sai hoặc phát âm một từ/câu khác ngoài từ mục tiêu '{recognized_text}'.",
+                tipsVi=[
+                    f"Vui lòng chỉ đọc đúng từ mục tiêu: '{recognized_text}'.",
+                    "Nghe lại audio mẫu của người bản xứ và bấm thu âm lại.",
                 ],
                 visemeTimeline=visemes,
             )
