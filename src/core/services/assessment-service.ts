@@ -6,7 +6,7 @@ import type {
 } from "@/core/dto/shared.dto";
 import type { PracticeRepository } from "@/core/repositories/practice-repository";
 import type { AiEngineClient } from "@/core/adapters/ai-engine-client";
-import { MockAiEngineClient } from "@/core/adapters/ai-engine-client";
+import { MockAiEngineClient, FastApiAiEngineClient } from "@/core/adapters/ai-engine-client";
 import { InMemoryPracticeRepository } from "@/core/repositories/practice-repository";
 
 // -----------------------------------------------------------------------------
@@ -51,10 +51,20 @@ export interface AssessmentDependencies {
   defaultUserId: string;
 }
 
+function createDefaultAiClient(): AiEngineClient {
+  if (
+    process.env.NODE_ENV !== "test" &&
+    (process.env.USE_REAL_AI_ENGINE === "true" || process.env.AI_ENGINE_PROVIDER === "local")
+  ) {
+    return new FastApiAiEngineClient(process.env.AI_ENGINE_URL ?? "http://127.0.0.1:8000");
+  }
+  return new MockAiEngineClient();
+}
+
 // Default singleton for development / runtime (overridable in tests)
 let globalDeps: AssessmentDependencies = {
   repository: new InMemoryPracticeRepository(),
-  aiClient: new MockAiEngineClient(),
+  aiClient: createDefaultAiClient(),
   defaultUserId: "019488a0-7b24-789a-bcde-000000000001",
 };
 
@@ -71,7 +81,7 @@ export function getAssessmentDependencies(): AssessmentDependencies {
 // -----------------------------------------------------------------------------
 
 export class AssessmentService {
-  private readonly AI_SLA_TIMEOUT_MS = 1500;
+  private readonly AI_SLA_TIMEOUT_MS = Number(process.env.AI_ENGINE_TIMEOUT_MS) || 1500;
 
   constructor(
     private readonly repository: PracticeRepository = globalDeps.repository,
