@@ -45,6 +45,12 @@ export default function HomePage() {
           >
             🔥 Bảng Thành Tích & Sổ Cái XP
           </Link>
+          <Link
+            href="/vocabulary"
+            className="inline-flex min-h-11 items-center rounded-xl bg-surface-raised border border-border-subtle px-6 font-semibold text-ink hover:border-emerald-400/50 transition-all"
+          >
+            📚 Thẻ Từ Vựng 3D (SM-2)
+          </Link>
         </div>
       </header>
 
