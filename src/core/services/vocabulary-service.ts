@@ -9,14 +9,19 @@ import type {
   BatchImportResponse,
   FlashcardReviewResult,
   VocabularyMetrics,
+  ListeningQuizQuestion,
+  ClozeSpellingQuestion,
+  ReviewLevel,
 } from "@/core/dto/vocabulary.dto";
 import {
   calculateQualityFromScore,
   calculateSm2,
+  calculateSm2Level,
   calculateXpFromQuality,
 } from "@/core/domain/sm2";
 import type { VocabularyRepository } from "@/core/repositories/vocabulary-repository";
 import { InMemoryVocabularyRepository } from "@/core/repositories/vocabulary-repository";
+import { lookupAcademicDictionary } from "./dictionary-data";
 
 // -----------------------------------------------------------------------------
 // Fallback Dictionary Database for Offline / Fast Execution
@@ -114,10 +119,11 @@ export class VocabularyService {
       throw new Error("Word cannot be empty");
     }
 
-    // 1. Check local high-precision cache first
-    const cached = LOCAL_FALLBACK_DICTIONARY[word];
+    // 1. Check comprehensive academic dictionary first
+    const academicEntry = lookupAcademicDictionary(word);
+    const cached = academicEntry || LOCAL_FALLBACK_DICTIONARY[word];
 
-    let phonetic = cached?.ipa || "";
+    let phonetic = cached?.ipa ? (cached.ipa.startsWith("/") ? cached.ipa : `/${cached.ipa}/`) : "";
     let partOfSpeech = cached?.partOfSpeech || "noun";
     let definitionVi = cached?.definitionVi || "";
     let exampleEn = cached?.exampleSentenceEn || "";
@@ -125,7 +131,7 @@ export class VocabularyService {
     let tipVi = cached?.articulatoryTipVi || "";
     let audioUrl: string | null = null;
 
-    // 2. Fetch Free Dictionary API if available
+    // 2. Fetch Free Dictionary API for native pronunciation audio and extra definitions
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000);
@@ -139,7 +145,12 @@ export class VocabularyService {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           const entry = data[0];
-          phonetic = entry.phonetic || entry.phonetics?.find((p: { text?: string }) => p.text)?.text || phonetic;
+          if (!phonetic) {
+            const apiPhonetic = entry.phonetic || entry.phonetics?.find((p: { text?: string }) => p.text)?.text;
+            if (apiPhonetic) {
+              phonetic = apiPhonetic.startsWith("/") ? apiPhonetic : `/${apiPhonetic}/`;
+            }
+          }
 
           // Find native UK/US audio if provided
           const audioEntry = entry.phonetics?.find((p: { audio?: string }) => p.audio && p.audio.length > 0);
@@ -149,17 +160,23 @@ export class VocabularyService {
 
           if (entry.meanings && entry.meanings.length > 0) {
             const primaryMeaning = entry.meanings[0];
-            partOfSpeech = primaryMeaning.partOfSpeech || partOfSpeech;
+            if (!partOfSpeech || partOfSpeech === "noun") {
+              partOfSpeech = primaryMeaning.partOfSpeech || partOfSpeech;
+            }
 
             const def = primaryMeaning.definitions?.[0];
+            if (def?.definition && !definitionVi) {
+              definitionVi = `${def.definition} (Định nghĩa ngữ cảnh: ${word})`;
+            }
             if (def?.example && !exampleEn) {
               exampleEn = def.example;
+              exampleVi = `Ví dụ sử dụng từ "${word}" trong giao tiếp thực tế.`;
             }
           }
         }
       }
     } catch {
-      // Free Dictionary API timeout or offline - gracefully fallback to AI / heuristics
+      // Free Dictionary API timeout or offline - gracefully proceed
     }
 
     // 3. Fallback / Heuristics if dictionary was incomplete
@@ -167,14 +184,14 @@ export class VocabularyService {
       phonetic = `/${word}/`;
     }
     if (!definitionVi) {
-      definitionVi = `Từ vựng tiếng Anh: "${word}". Định nghĩa và ngữ nghĩa giao tiếp thông dụng.`;
+      definitionVi = `Từ vựng "${word}" (${partOfSpeech}): Sử dụng trong văn cảnh giao tiếp và học thuật.`;
     }
     if (!exampleEn) {
-      exampleEn = `We practiced pronouncing the word "${word}" accurately.`;
-      exampleVi = `Chúng tôi đã luyện tập phát âm chuẩn xác từ "${word}".`;
+      exampleEn = `We practiced pronouncing the word "${word}" accurately in daily conversation.`;
+      exampleVi = `Chúng tôi đã luyện tập phát âm chuẩn xác từ "${word}" trong giao tiếp hằng ngày.`;
     }
     if (!tipVi) {
-      tipVi = `Đặt khẩu hình tự nhiên, chú ý trọng âm chính và luồng hơi của từ "${word}".`;
+      tipVi = `Chú ý đặt khẩu hình môi - lưỡi tự nhiên, bật hơi rõ ràng và nhấn đúng trọng âm chính của từ "${word}".`;
     }
 
     return {
@@ -186,7 +203,6 @@ export class VocabularyService {
       exampleSentenceVi: exampleVi,
       articulatoryTipVi: tipVi,
       referenceAudioUrl: audioUrl,
-      referenceAudioBase64: null,
     };
   }
 
@@ -260,42 +276,82 @@ export class VocabularyService {
 
   /**
    * Speaking-Verified Flashcard Review Execution.
-   * Enforces the rule: Pronunciation score >= 8000 bp (80%) is required to pass and advance SM-2 interval.
+   * Enforces 3-Level Anki Transitions or score-based threshold (score >= 8000 bp).
    */
   async submitSpeakingReview(params: {
     vocabularyItemId: string;
     idempotencyKey: string;
     pronunciationScoreBp: number;
     audioDurationMs: number;
+    reviewLevel?: ReviewLevel;
     userId?: string;
   }): Promise<FlashcardReviewResult> {
     const userId = params.userId ?? this.defaultUserId;
-    const { vocabularyItemId, idempotencyKey, pronunciationScoreBp } = params;
+    const { vocabularyItemId, idempotencyKey, pronunciationScoreBp, reviewLevel } = params;
 
     const item = await this.vocabRepo.findItemById(vocabularyItemId);
     if (!item) {
       throw new Error(`Vocabulary item not found: ${vocabularyItemId}`);
     }
 
-    // 1. Calculate SM-2 Quality Grade & Transitions
-    const qualityGrade = calculateQualityFromScore(pronunciationScoreBp);
-    const sm2Result = calculateSm2({
-      qualityGrade,
-      repetitionCount: item.sm2Repetition,
-      intervalDays: item.sm2IntervalDays,
-      easeFactorBp: item.sm2EaseFactorBp,
-    });
+    let isPassed: boolean;
+    let qualityGrade: number;
+    let repetitionCountAfter: number;
+    let intervalDaysAfter: number;
+    let easeFactorAfterBp: number;
+    let nextReviewDate: Date;
+    let xpAwarded: bigint;
+    let feedbackVi: string;
+    let masteryLevel: 1 | 2 | 3;
 
-    const isPassed = sm2Result.isPassed;
-    const xpAwarded = calculateXpFromQuality(qualityGrade);
+    if (reviewLevel) {
+      // User explicitly selected 3-Level Anki button: Again (Level 1) | Good (Level 2) | Easy (Level 3)
+      const levelRes = calculateSm2Level({
+        level: reviewLevel,
+        repetitionCount: item.sm2Repetition,
+        intervalDays: item.sm2IntervalDays,
+        easeFactorBp: item.sm2EaseFactorBp,
+      });
+
+      isPassed = levelRes.isPassed;
+      qualityGrade = reviewLevel === "again" ? 2 : reviewLevel === "easy" ? 5 : 4;
+      repetitionCountAfter = levelRes.repetitionCount;
+      intervalDaysAfter = levelRes.intervalDays;
+      easeFactorAfterBp = levelRes.easeFactorBp;
+      nextReviewDate = levelRes.nextReviewDate;
+      xpAwarded = BigInt(levelRes.xpAwarded);
+      feedbackVi = levelRes.feedbackVi;
+      masteryLevel = levelRes.levelNumber;
+    } else {
+      // Automated SM-2 grade calculation from pronunciation score
+      qualityGrade = calculateQualityFromScore(pronunciationScoreBp);
+      const sm2Result = calculateSm2({
+        qualityGrade,
+        repetitionCount: item.sm2Repetition,
+        intervalDays: item.sm2IntervalDays,
+        easeFactorBp: item.sm2EaseFactorBp,
+      });
+
+      isPassed = sm2Result.isPassed;
+      repetitionCountAfter = sm2Result.repetitionCount;
+      intervalDaysAfter = sm2Result.intervalDays;
+      easeFactorAfterBp = sm2Result.easeFactorBp;
+      nextReviewDate = sm2Result.nextReviewDate;
+      xpAwarded = calculateXpFromQuality(qualityGrade);
+      masteryLevel = pronunciationScoreBp >= 9000 ? 3 : pronunciationScoreBp >= 8000 ? 2 : 1;
+
+      feedbackVi = isPassed
+        ? `Phát âm chuẩn xác (${Math.round(pronunciationScoreBp / 100)}/100)! Thẻ đã được công nhận ghi nhớ và tăng khoảng cách ôn tập lên ${intervalDaysAfter} ngày (+${xpAwarded} XP).`
+        : `Phát âm chưa đạt (${Math.round(pronunciationScoreBp / 100)}/100 < 80). Thẻ cần được luyện nói lại vào ngày mai để đảm bảo phản xạ nói chuẩn xác.`;
+    }
 
     // 2. Prepare transaction record
     const updatedItemProps: Partial<VocabularyItem> & { id: string } = {
       id: item.id,
-      sm2Repetition: sm2Result.repetitionCount,
-      sm2IntervalDays: sm2Result.intervalDays,
-      sm2EaseFactorBp: sm2Result.easeFactorBp,
-      sm2NextReviewAt: sm2Result.nextReviewDate.toISOString(),
+      sm2Repetition: repetitionCountAfter,
+      sm2IntervalDays: intervalDaysAfter,
+      sm2EaseFactorBp: easeFactorAfterBp,
+      sm2NextReviewAt: nextReviewDate.toISOString(),
       sm2LastReviewedAt: new Date().toISOString(),
       lastMasteryScoreBp: pronunciationScoreBp,
       isMastered: isPassed ? true : item.isMastered,
@@ -310,9 +366,9 @@ export class VocabularyService {
       pronunciationScoreBp,
       isPassed,
       intervalDaysBefore: item.sm2IntervalDays,
-      intervalDaysAfter: sm2Result.intervalDays,
+      intervalDaysAfter,
       easeFactorBeforeBp: item.sm2EaseFactorBp,
-      easeFactorAfterBp: sm2Result.easeFactorBp,
+      easeFactorAfterBp,
       xpAwarded,
     };
 
@@ -321,23 +377,114 @@ export class VocabularyService {
       updatedItem: updatedItemProps,
     });
 
-    const feedbackVi = isPassed
-      ? `Phát âm chuẩn xác (${Math.round(pronunciationScoreBp / 100)}/100)! Thẻ đã được công nhận ghi nhớ và tăng khoảng cách ôn tập lên ${sm2Result.intervalDays} ngày (+${xpAwarded} XP).`
-      : `Phát âm chưa đạt (${Math.round(pronunciationScoreBp / 100)}/100 < 80). Thẻ cần được luyện nói lại vào ngày mai để đảm bảo phản xạ nói chuẩn xác.`;
-
     return {
       reviewId: txResult.reviewId,
       vocabularyItemId: item.id,
       qualityGrade,
       pronunciationScoreBp,
       isPassed,
-      repetitionCountAfter: sm2Result.repetitionCount,
-      intervalDaysAfter: sm2Result.intervalDays,
-      easeFactorAfterBp: sm2Result.easeFactorBp,
-      nextReviewAt: sm2Result.nextReviewDate.toISOString(),
+      repetitionCountAfter,
+      intervalDaysAfter,
+      easeFactorAfterBp,
+      nextReviewAt: nextReviewDate.toISOString(),
       xpAwarded: Number(xpAwarded),
       feedbackVi,
+      masteryLevel,
     };
+  }
+
+  async createDeck(params: {
+    name: string;
+    description?: string | null;
+    tags?: string[];
+    isDefault?: boolean;
+    userId?: string;
+  }): Promise<VocabularyDeck> {
+    const userId = params.userId ?? this.defaultUserId;
+    return this.vocabRepo.createDeck({
+      userId,
+      name: params.name,
+      description: params.description ?? null,
+      tags: params.tags ?? [],
+      isDefault: params.isDefault ?? false,
+    });
+  }
+
+  /**
+   * Generates Listening Multiple-Choice Quiz Questions for a Deck.
+   */
+  async getListeningQuiz(deckId?: string, limit: number = 5): Promise<ListeningQuizQuestion[]> {
+    const items = await this.getItems(deckId);
+    if (items.length === 0) {
+      return [];
+    }
+
+    // Shuffle items
+    const shuffled = [...items].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, limit);
+
+    return selected.map((item) => {
+      // Pick 3 distractor words from other items, or generate fallback distractors
+      const otherWords = items
+        .filter((i) => i.id !== item.id)
+        .map((i) => i.word)
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 3);
+
+      const fallbackPool = ["fluent", "articulation", "confidence", "resilience", "eloquent", "ubiquitous"];
+      while (otherWords.length < 3) {
+        const candidate = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
+        if (candidate && candidate !== item.word && !otherWords.includes(candidate)) {
+          otherWords.push(candidate);
+        }
+      }
+
+      const options = [item.word, ...otherWords].sort(() => 0.5 - Math.random());
+
+      return {
+        id: crypto.randomUUID(),
+        targetWord: item.word,
+        ipa: item.ipa,
+        audioUrl: item.referenceAudioUrl,
+        definitionVi: item.definitionVi,
+        options,
+        correctAnswer: item.word,
+      };
+    });
+  }
+
+  /**
+   * Generates Fill-in-the-Blank Cloze Spelling Questions for a Deck.
+   */
+  async getClozeSpellingQuiz(deckId?: string, limit: number = 5): Promise<ClozeSpellingQuestion[]> {
+    const items = await this.getItems(deckId);
+    if (items.length === 0) {
+      return [];
+    }
+
+    const shuffled = [...items].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, limit);
+
+    return selected.map((item) => {
+      // Replace target word in exampleSentenceEn with '_____'
+      const regex = new RegExp(`\\b${item.word}\\b`, "gi");
+      let sentenceWithBlank = item.exampleSentenceEn.replace(regex, "_____");
+
+      if (!sentenceWithBlank.includes("_____")) {
+        // If word wasn't matched directly, append blank placeholder
+        sentenceWithBlank = `Fill in the blank: [ _____ ] - ${item.exampleSentenceEn}`;
+      }
+
+      return {
+        id: crypto.randomUUID(),
+        targetWord: item.word,
+        sentenceWithBlank,
+        sentenceVi: item.exampleSentenceVi,
+        hintIpa: item.ipa,
+        hintDefinitionVi: item.definitionVi,
+        audioUrl: item.referenceAudioUrl ?? null,
+      };
+    });
   }
 
   async getDecks(userId?: string): Promise<VocabularyDeck[]> {

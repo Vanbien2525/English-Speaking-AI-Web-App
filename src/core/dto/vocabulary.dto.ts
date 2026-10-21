@@ -16,6 +16,13 @@ export const VocabularyDeckSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
+export const CreateVocabularyDeckSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  isDefault: z.boolean().optional(),
+});
+
 export const VocabularyItemSchema = z.object({
   id: z.uuid(),
   deckId: z.uuid(),
@@ -59,9 +66,8 @@ export const QuickAddEnrichResponseSchema = z.object({
   definitionVi: z.string().min(1),
   exampleSentenceEn: z.string().min(1),
   exampleSentenceVi: z.string().min(1),
-  articulatoryTipVi: z.string().min(1),
+  articulatoryTipVi: z.string().nullable().default(null),
   referenceAudioUrl: z.string().nullable().default(null),
-  referenceAudioBase64: z.string().nullable().default(null),
 });
 
 export const CreateVocabularyItemSchema = z.object({
@@ -72,21 +78,21 @@ export const CreateVocabularyItemSchema = z.object({
   definitionVi: z.string().trim().min(1),
   exampleSentenceEn: z.string().trim().min(1),
   exampleSentenceVi: z.string().trim().min(1),
-  articulatoryTipVi: z.string().trim().nullable().default(null),
-  referenceAudioUrl: z.string().nullable().default(null),
+  articulatoryTipVi: z.string().trim().nullable().optional(),
+  referenceAudioUrl: z.string().trim().nullable().optional(),
 });
 
 // -----------------------------------------------------------------------------
-// Manual & Batch Import Payloads
+// Batch Multi-Word Importer Payloads
 // -----------------------------------------------------------------------------
 export const BatchImportRequestSchema = z.object({
   deckId: z.uuid(),
-  rawText: z.string().min(1).max(2000), // Max 20 words text blob
+  rawText: z.string().trim().min(1).max(10_000),
 });
 
 export const BatchImportResultItemSchema = z.object({
   word: z.string(),
-  status: z.enum(["success", "error", "skipped"]),
+  status: z.enum(["success", "error"]),
   item: VocabularyItemSchema.nullable().default(null),
   errorMessage: z.string().nullable().default(null),
 });
@@ -101,11 +107,14 @@ export const BatchImportResponseSchema = z.object({
 // -----------------------------------------------------------------------------
 // Speaking-Verified Flashcard Review Payloads
 // -----------------------------------------------------------------------------
+export const ReviewLevelSchema = z.enum(["again", "good", "easy"]);
+
 export const SubmitFlashcardSpeakingReviewSchema = z.object({
   vocabularyItemId: z.uuid(),
   idempotencyKey: z.uuid(),
   pronunciationScoreBp: ScoreBpSchema,
   audioDurationMs: DurationMsSchema,
+  reviewLevel: ReviewLevelSchema.optional(),
 });
 
 export const FlashcardReviewResultSchema = z.object({
@@ -120,6 +129,7 @@ export const FlashcardReviewResultSchema = z.object({
   nextReviewAt: z.string().datetime(),
   xpAwarded: z.int().min(0),
   feedbackVi: z.string(),
+  masteryLevel: z.int().min(1).max(3).optional(),
 });
 
 export const VocabularyMetricsSchema = z.object({
@@ -130,9 +140,33 @@ export const VocabularyMetricsSchema = z.object({
 });
 
 // -----------------------------------------------------------------------------
+// Interactive Practice Modes (Listening Quiz & Cloze Fill-in)
+// -----------------------------------------------------------------------------
+export const ListeningQuizQuestionSchema = z.object({
+  id: z.uuid(),
+  targetWord: z.string(),
+  ipa: z.string(),
+  audioUrl: z.string().nullable(),
+  definitionVi: z.string(),
+  options: z.array(z.string()),
+  correctAnswer: z.string(),
+});
+
+export const ClozeSpellingQuestionSchema = z.object({
+  id: z.uuid(),
+  targetWord: z.string(),
+  sentenceWithBlank: z.string(),
+  sentenceVi: z.string(),
+  hintIpa: z.string(),
+  audioUrl: z.string().nullable().optional(),
+  hintDefinitionVi: z.string().nullable().optional(),
+});
+
+// -----------------------------------------------------------------------------
 // Inferred Types
 // -----------------------------------------------------------------------------
 export type VocabularyDeck = z.infer<typeof VocabularyDeckSchema>;
+export type CreateVocabularyDeck = z.infer<typeof CreateVocabularyDeckSchema>;
 export type VocabularyItem = z.infer<typeof VocabularyItemSchema>;
 export type QuickAddEnrichRequest = z.infer<typeof QuickAddEnrichRequestSchema>;
 export type QuickAddEnrichResponse = z.infer<typeof QuickAddEnrichResponseSchema>;
@@ -140,6 +174,9 @@ export type CreateVocabularyItem = z.infer<typeof CreateVocabularyItemSchema>;
 export type BatchImportRequest = z.infer<typeof BatchImportRequestSchema>;
 export type BatchImportResultItem = z.infer<typeof BatchImportResultItemSchema>;
 export type BatchImportResponse = z.infer<typeof BatchImportResponseSchema>;
+export type ReviewLevel = z.infer<typeof ReviewLevelSchema>;
 export type SubmitFlashcardSpeakingReview = z.infer<typeof SubmitFlashcardSpeakingReviewSchema>;
 export type FlashcardReviewResult = z.infer<typeof FlashcardReviewResultSchema>;
 export type VocabularyMetrics = z.infer<typeof VocabularyMetricsSchema>;
+export type ListeningQuizQuestion = z.infer<typeof ListeningQuizQuestionSchema>;
+export type ClozeSpellingQuestion = z.infer<typeof ClozeSpellingQuestionSchema>;

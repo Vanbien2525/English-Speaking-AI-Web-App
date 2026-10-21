@@ -6,7 +6,11 @@ import type {
   FlashcardReviewResult,
   QuickAddEnrichResponse,
   BatchImportResponse,
+  ReviewLevel,
 } from "@/core/dto/vocabulary.dto";
+
+export type PracticeMode = "flashcard" | "listening_quiz" | "spelling_cloze";
+export type VocabularyLevelFilter = "all" | "again" | "good" | "easy";
 
 export interface VocabularyState {
   // Data
@@ -21,10 +25,13 @@ export interface VocabularyState {
   isFlipped: boolean;
   isReviewing: boolean;
   lastReviewResult: FlashcardReviewResult | null;
+  activePracticeMode: PracticeMode;
+  levelFilter: VocabularyLevelFilter;
 
   // UI Modals
   isQuickAddOpen: boolean;
   isBatchImportOpen: boolean;
+  isCreateDeckModalOpen: boolean;
   isLoading: boolean;
   isEnriching: boolean;
   isSubmittingReview: boolean;
@@ -32,9 +39,13 @@ export interface VocabularyState {
 
   // Actions
   setSelectedDeckId: (deckId: string | null) => void;
+  setActivePracticeMode: (mode: PracticeMode) => void;
+  setLevelFilter: (filter: VocabularyLevelFilter) => void;
   setQuickAddOpen: (open: boolean) => void;
   setBatchImportOpen: (open: boolean) => void;
+  setCreateDeckModalOpen: (open: boolean) => void;
   setIsReviewing: (reviewing: boolean) => void;
+  learnItemNow: (itemId: string) => void;
   flipCard: () => void;
   nextCard: () => void;
   prevCard: () => void;
@@ -44,6 +55,7 @@ export interface VocabularyState {
   fetchInitialData: () => Promise<void>;
   fetchDueItems: () => Promise<void>;
   fetchItems: (deckId?: string) => Promise<void>;
+  createDeck: (params: { name: string; description?: string; tags?: string[] }) => Promise<boolean>;
   enrichWord: (word: string) => Promise<QuickAddEnrichResponse | null>;
   createItem: (item: {
     deckId: string;
@@ -61,6 +73,7 @@ export interface VocabularyState {
     vocabularyItemId: string;
     pronunciationScoreBp: number;
     audioDurationMs: number;
+    reviewLevel?: ReviewLevel;
   }) => Promise<FlashcardReviewResult | null>;
 }
 
@@ -80,9 +93,12 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
   isFlipped: false,
   isReviewing: false,
   lastReviewResult: null,
+  activePracticeMode: "flashcard",
+  levelFilter: "all",
 
   isQuickAddOpen: false,
   isBatchImportOpen: false,
+  isCreateDeckModalOpen: false,
   isLoading: false,
   isEnriching: false,
   isSubmittingReview: false,
@@ -93,8 +109,11 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
     get().fetchItems(deckId ?? undefined);
   },
 
+  setActivePracticeMode: (mode) => set({ activePracticeMode: mode }),
+  setLevelFilter: (filter) => set({ levelFilter: filter }),
   setQuickAddOpen: (open) => set({ isQuickAddOpen: open }),
   setBatchImportOpen: (open) => set({ isBatchImportOpen: open }),
+  setCreateDeckModalOpen: (open) => set({ isCreateDeckModalOpen: open }),
   setIsReviewing: (reviewing) =>
     set({
       isReviewing: reviewing,
@@ -102,6 +121,23 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
       isFlipped: false,
       lastReviewResult: null,
     }),
+
+  learnItemNow: (itemId) => {
+    const { items, dueItems } = get();
+    const targetItem = items.find((i) => i.id === itemId) || dueItems.find((i) => i.id === itemId);
+    if (!targetItem) return;
+
+    // Filter out item if already in dueItems, then prepend at index 0
+    const filteredDue = dueItems.filter((i) => i.id !== itemId);
+    set({
+      dueItems: [targetItem, ...filteredDue],
+      currentCardIndex: 0,
+      isReviewing: true,
+      activePracticeMode: "flashcard",
+      isFlipped: false,
+      lastReviewResult: null,
+    });
+  },
 
   flipCard: () => set((s) => ({ isFlipped: !s.isFlipped })),
 
@@ -276,6 +312,36 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
       const error = err as Error;
       set({ isLoading: false, errorMessage: error.message });
       return null;
+    }
+  },
+
+  createDeck: async (params) => {
+    set({ isLoading: true, errorMessage: null });
+    try {
+      const res = await fetch("/api/vocabulary/decks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error?.message || "Lỗi tạo bộ từ vựng mới");
+      }
+
+      const newDeck = (await res.json()) as VocabularyDeck;
+      set({
+        isLoading: false,
+        isCreateDeckModalOpen: false,
+        selectedDeckId: newDeck.id,
+      });
+
+      await get().fetchInitialData();
+      return true;
+    } catch (err: unknown) {
+      const error = err as Error;
+      set({ isLoading: false, errorMessage: error.message });
+      return false;
     }
   },
 

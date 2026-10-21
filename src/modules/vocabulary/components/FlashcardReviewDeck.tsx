@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
+import type { ReviewLevel } from "@/core/dto/vocabulary.dto";
 import { useVocabularyStore } from "../stores/useVocabularyStore";
 import { useVocabularyAudioRecorder } from "../hooks/useVocabularyAudioRecorder";
 import { VocabWaveform } from "./VocabWaveform";
@@ -36,6 +37,9 @@ export function FlashcardReviewDeck() {
 
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [show3dModel, setShow3dModel] = useState(true);
+  const [assessedCardId, setAssessedCardId] = useState<string | null>(null);
+  const [rawScoreBp, setRawScoreBp] = useState<number | null>(null);
+  const [lastAudioDurationMs, setLastAudioDurationMs] = useState<number>(1200);
 
   const {
     isRecording,
@@ -46,6 +50,7 @@ export function FlashcardReviewDeck() {
   } = useVocabularyAudioRecorder();
 
   const currentItem = dueItems[currentCardIndex];
+  const lastAssessedScoreBp = assessedCardId === currentItem?.id ? rawScoreBp : null;
 
   const playWebSpeech = useCallback((word: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
@@ -113,6 +118,11 @@ export function FlashcardReviewDeck() {
     if (isRecording) {
       const assessResult = await stopAndAssess(currentItem.word);
       if (assessResult) {
+        setAssessedCardId(currentItem.id);
+        setRawScoreBp(assessResult.pronunciationScoreBp);
+        setLastAudioDurationMs(assessResult.durationMs);
+
+        // Submit default review
         const reviewResult = await submitSpeakingReview({
           vocabularyItemId: currentItem.id,
           pronunciationScoreBp: assessResult.pronunciationScoreBp,
@@ -126,13 +136,39 @@ export function FlashcardReviewDeck() {
             );
           } else {
             toast.warning(
-              `⚠️ Chưa đạt: ${Math.round(reviewResult.pronunciationScoreBp / 100)}/100 (< 80). Cần luyện lại vào ngày mai.`,
+              `⚠️ Chưa đạt: ${Math.round(reviewResult.pronunciationScoreBp / 100)}/100 (< 80). Chọn 🔴 Again để luyện lại ngay.`,
             );
           }
         }
       }
     } else {
       await startRecording();
+    }
+  };
+
+  // Submit explicit 3-level Anki rating
+  const handleSelectLevel = async (level: ReviewLevel) => {
+    if (!currentItem) return;
+    const scoreBp = lastAssessedScoreBp ?? (level === "again" ? 4500 : level === "good" ? 8500 : 9500);
+
+    const reviewResult = await submitSpeakingReview({
+      vocabularyItemId: currentItem.id,
+      pronunciationScoreBp: scoreBp,
+      audioDurationMs: lastAudioDurationMs,
+      reviewLevel: level,
+    });
+
+    if (reviewResult) {
+      if (level === "again") {
+        toast.error("🔴 Again: Thẻ giữ ở Cấp 1, sẽ ôn lại ngay trong phiên này!");
+      } else if (level === "good") {
+        toast.success(`🟡 Good: Cấp 2 (+15 XP). Nhắc lại sau ${reviewResult.intervalDaysAfter} ngày!`);
+      } else {
+        toast.success(`🟢 Easy: Cấp 3 (+25 XP). Giãn cách hẳn ${reviewResult.intervalDaysAfter} ngày!`);
+      }
+      setTimeout(() => {
+        nextCard();
+      }, 600);
     }
   };
 
@@ -330,6 +366,39 @@ export function FlashcardReviewDeck() {
         {/* Real-time Waveform display */}
         <VocabWaveform analyser={analyser} isRecording={isRecording} />
 
+        {/* Native RP Pronunciation Comparison Card */}
+        <div className="w-full p-4 rounded-xl bg-surface-raised border border-border-subtle flex flex-col gap-2.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-ink flex items-center gap-1.5">
+              <span>🎯</span> Đối Chiếu Âm Vị Mẫu Bản Xứ (British RP)
+            </span>
+            <button
+              type="button"
+              onClick={handlePlayAudio}
+              className="text-primary hover:underline font-semibold flex items-center gap-1"
+            >
+              <span>🔊</span> Nghe Mẫu Bản Xứ
+            </button>
+          </div>
+          <div className="flex items-center justify-between bg-surface p-3 rounded-lg border border-border-subtle/70">
+            <div>
+              <span className="text-[11px] text-ink-muted uppercase block">Phiên âm chuẩn đích:</span>
+              <span className="ipa text-lg font-bold text-primary tracking-wider">
+                /{currentItem.ipa.replace(/^\/|\/$/g, "")}/
+              </span>
+            </div>
+            <div className="text-right">
+              <span className="text-[11px] text-ink-muted uppercase block">Điểm phát âm đạt chuẩn:</span>
+              <span className="text-sm font-semibold text-ink">≥ 80/100 (8000 bp)</span>
+            </div>
+          </div>
+          {lastReviewResult && !isPassed && (
+            <p className="text-xs text-coral-400 bg-coral-500/10 p-2 rounded border border-coral-500/30">
+              ⚠️ <strong>Lưu ý cấu âm:</strong> Phát âm cần chính xác từng nguyên âm ngắn/dài và bật rõ âm cuối. Tránh kéo dài nguyên âm ngắn (ví dụ đọc /ʊ/ trong &quot;good&quot; thành /uː/).
+            </p>
+          )}
+        </div>
+
         {/* Review Result Banner */}
         {lastReviewResult && (
           <div
@@ -348,6 +417,68 @@ export function FlashcardReviewDeck() {
             </div>
           </div>
         )}
+
+        {/* 3-Level Anki Rating Buttons */}
+        <div className="w-full mt-1">
+          <div className="text-xs font-semibold text-ink-muted mb-2 text-center uppercase tracking-wider">
+            Chọn Cấp Độ Đánh Giá Thuật Toán SM-2:
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full">
+            {/* 🔴 Again */}
+            <button
+              type="button"
+              onClick={() => handleSelectLevel("again")}
+              disabled={isSubmittingReview || isRecording}
+              className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                lastReviewResult && !isPassed
+                  ? "bg-coral-500/20 border-coral-500 ring-2 ring-coral-500/50"
+                  : "bg-surface-raised border-border-subtle hover:border-coral-500/60 hover:bg-coral-500/10"
+              }`}
+            >
+              <div className="flex items-center gap-1 font-bold text-coral-400 text-sm">
+                <span>🔴</span> Again (Sai / Quên)
+              </div>
+              <span className="text-[11px] text-ink font-medium mt-0.5">Về Cấp độ 1</span>
+              <span className="text-[10px] text-ink-muted mt-0.5">Nhắc lại ngay trong vài phút</span>
+            </button>
+
+            {/* 🟡 Good */}
+            <button
+              type="button"
+              onClick={() => handleSelectLevel("good")}
+              disabled={isSubmittingReview || isRecording}
+              className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                lastReviewResult && isPassed && (scorePercent ?? 0) < 90
+                  ? "bg-amber-500/20 border-amber-500 ring-2 ring-amber-500/50"
+                  : "bg-surface-raised border-border-subtle hover:border-amber-500/60 hover:bg-amber-500/10"
+              }`}
+            >
+              <div className="flex items-center gap-1 font-bold text-amber-400 text-sm">
+                <span>🟡</span> Good (Tạm ổn)
+              </div>
+              <span className="text-[11px] text-ink font-medium mt-0.5">Giữ Cấp độ 2 (+15 XP)</span>
+              <span className="text-[10px] text-ink-muted mt-0.5">Nhắc lại sau 1 - 3 ngày</span>
+            </button>
+
+            {/* 🟢 Easy */}
+            <button
+              type="button"
+              onClick={() => handleSelectLevel("easy")}
+              disabled={isSubmittingReview || isRecording}
+              className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                lastReviewResult && isPassed && (scorePercent ?? 0) >= 90
+                  ? "bg-emerald-500/20 border-emerald-500 ring-2 ring-emerald-500/50"
+                  : "bg-surface-raised border-border-subtle hover:border-emerald-500/60 hover:bg-emerald-500/10"
+              }`}
+            >
+              <div className="flex items-center gap-1 font-bold text-emerald-400 text-sm">
+                <span>🟢</span> Easy (Quá dễ)
+              </div>
+              <span className="text-[11px] text-ink font-medium mt-0.5">Lên Cấp độ 3 (+25 XP)</span>
+              <span className="text-[10px] text-ink-muted mt-0.5">Giãn cách 7 - 14 ngày</span>
+            </button>
+          </div>
+        </div>
 
         {/* Microphone Button Controls */}
         <div className="flex items-center gap-4 mt-1">

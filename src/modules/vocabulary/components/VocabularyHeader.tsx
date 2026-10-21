@@ -11,6 +11,7 @@ export function VocabularyHeader() {
     setIsReviewing,
     setQuickAddOpen,
     setBatchImportOpen,
+    setCreateDeckModalOpen,
   } = useVocabularyStore();
 
   const retentionPercent = Math.round(metrics.retentionRateBp / 100);
@@ -36,6 +37,14 @@ export function VocabularyHeader() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => setCreateDeckModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-raised border border-border-subtle hover:border-primary/50 text-xs font-semibold text-ink transition active:scale-95 shadow-sm"
+          >
+            <span>📁</span>
+            <span>+ Tạo Bộ Từ</span>
+          </button>
+
           <button
             onClick={() => setQuickAddOpen(true)}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-surface-raised border border-border-subtle hover:border-primary/50 text-xs font-semibold text-ink transition active:scale-95 shadow-sm"

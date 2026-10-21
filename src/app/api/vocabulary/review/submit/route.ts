@@ -32,6 +32,7 @@ export async function POST(request: Request): Promise<Response> {
       idempotencyKey: validated.data.idempotencyKey,
       pronunciationScoreBp: validated.data.pronunciationScoreBp,
       audioDurationMs: validated.data.audioDurationMs,
+      reviewLevel: validated.data.reviewLevel,
       userId: deps.defaultUserId,
     });
 

@@ -40,6 +40,28 @@ COMMON_WORD_IPA = {
     "world": ["w", "ɜː", "l", "d"],
     "good": ["ɡ", "ʊ", "d"],
     "morning": ["m", "ɔː", "n", "ɪ", "ŋ"],
+    "power": ["p", "aʊ", "ə", "r"],
+    "speak": ["s", "p", "iː", "k"],
+    "listen": ["l", "ɪ", "s", "n"],
+    "practice": ["p", "r", "æ", "k", "t", "ɪ", "s"],
+    "fluent": ["f", "l", "uː", "ə", "n", "t"],
+    "confidence": ["k", "ɒ", "n", "f", "ɪ", "d", "ə", "n", "s"],
+    "success": ["s", "ə", "k", "s", "e", "s"],
+    "knowledge": ["n", "ɒ", "l", "ɪ", "dʒ"],
+    "experience": ["ɪ", "k", "s", "p", "ɪə", "r", "i", "ə", "n", "s"],
+    "community": ["k", "ə", "m", "j", "uː", "n", "ə", "t", "i"],
+    "technology": ["t", "e", "k", "n", "ɒ", "l", "ə", "dʒ", "i"],
+    "book": ["b", "ʊ", "k"],
+    "computer": ["k", "ə", "m", "p", "j", "uː", "t", "ə", "r"],
+    "family": ["f", "æ", "m", "ə", "l", "i"],
+    "friend": ["f", "r", "e", "n", "d"],
+    "focus": ["f", "əʊ", "k", "ə", "s"],
+    "creativity": ["k", "r", "iː", "eɪ", "t", "ɪ", "v", "ə", "t", "i"],
+    "passion": ["p", "æ", "ʃ", "ə", "n"],
+    "journey": ["dʒ", "ɜː", "n", "i"],
+    "future": ["f", "j", "uː", "tʃ", "ə", "r"],
+    "culture": ["k", "ʌ", "l", "tʃ", "ə", "r"],
+    "smart": ["s", "m", "ɑː", "t"],
 }
 
 
@@ -242,8 +264,33 @@ class Wav2Vec2PhonemeService:
                             severity = "minor" if matched in ["t", "s", "d"] else "major"
                             gop_score = 6500 if severity == "minor" else 3500
                     else:
-                        # Vietnamese L2 specific rules for /θ/ practice:
-                        if exp_ipa == "θ" and (w_idx % 2 == 1):
+                        # Acoustic validation against Native RP benchmark
+                        # 1. Detect vowel elongation substitution: e.g. target /ʊ/ (good) stretched into /uː/
+                        is_stretched_vowel = False
+                        if wav is not None and len(wav) > 0:
+                            # Frame-based energy analysis to estimate vowel duration
+                            sr = 16000
+                            frame_len = int(sr * 0.025)
+                            hop_len = int(sr * 0.010)
+                            n_frames = (len(wav) - frame_len) // hop_len
+                            if n_frames > 5:
+                                energies = [float(np.sum(wav[i * hop_len : i * hop_len + frame_len] ** 2)) for i in range(n_frames)]
+                                max_e = max(energies) if energies else 0.0
+                                if max_e > 0:
+                                    norm_e = [e / max_e for e in energies]
+                                    high_energy_ms = sum(1 for e in norm_e if e > 0.35) * 10.0
+                                    # Target /ʊ/ in 'good' should be a quick lax vowel (~100-180ms)
+                                    # If user sustained vowel for > 250ms, they articulated /uː/ instead of /ʊ/
+                                    if exp_ipa == "ʊ" and high_energy_ms > 240:
+                                        is_stretched_vowel = True
+
+                        if is_stretched_vowel:
+                            actual_ipa = "uː"
+                            error_type = "substitution"
+                            severity = "major"
+                            gop_score = 4200
+                        elif exp_ipa == "θ" and (w_idx % 2 == 1):
+                            # Vietnamese L2 specific rules for /θ/ practice:
                             actual_ipa = "t"
                             error_type = "substitution"
                             severity = "minor"
