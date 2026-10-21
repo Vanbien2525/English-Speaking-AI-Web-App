@@ -57,4 +57,13 @@
 - [x] Pytest tích hợp AI Engine Pass 100% (2/2 tests green, latency < 1500ms SLA)
 - [x] Target Phrase Alignment & Dynamic Client Routing hoàn tất
 
-## [>] Vị Trí Hiện Tại: [Hoàn Thành 4 Tính Năng Cốt Lõi + AI Engine - Sẵn Sàng Release Candidate v1.0.0]
+## [x] Nâng Cấp Chuyên Sâu: 6 Điểm Vàng Phân Hệ Từ Vựng Phản Xạ 3D (HOÀN THÀNH 100%)
+- [x] 1. Từ điển học thuật song ngữ chuyên sâu: `src/core/services/dictionary-data.ts` (Sửa dứt điểm lỗi định nghĩa tiếng Việt & chuẩn hóa IPA Oxford/Cambridge cho `power`, `good`, `think`, v.v.).
+- [x] 2. Cơ chế 3 Cấp Độ Đánh Giá SM-2 chuẩn Anki: `src/core/domain/sm2.ts` & `FlashcardReviewDeck.tsx` (🔴 Again: Cấp 1 ôn lại ngay trong vài phút / 1 ngày, 🟡 Good: Cấp 2 nhắc lại sau 1-3 ngày, 🟢 Easy: Cấp 3 giãn cách 7-14 ngày).
+- [x] 3. Quản lý Thư mục / Bộ từ vựng (Deck): `CreateDeckModal.tsx` & `VocabularyTable.tsx` (Tạo bộ từ mới, lọc theo Bộ từ, lọc theo 3 Cấp độ, lọc theo Lịch đến hạn ôn tập).
+- [x] 4. Học lại tức thì từ danh sách: Click vào từ hoặc bấm nút "⚡ Luyện lại" trên từng hàng trong `VocabularyTable.tsx` lập tức nạp thẻ vào Flashcard 3D Studio.
+- [x] 5. Đa dạng hóa chế độ luyện tập theo bộ: Thêm thanh tab chuyển đổi giữa 🎴 Thẻ 3D SM-2, 🎧 Luyện Nghe Chọn Từ Vựng (`ListeningQuizStudio.tsx`), và ✍️ Gõ Từ Điền Chỗ Trống (`SpellingClozeStudio.tsx`).
+- [x] 6. Đối chiếu chấm điểm nghiêm ngặt với mẫu bản xứ: `services/ai-engine/app/services/phoneme_service.py` phân tích độ dài & năng lượng âm học, bắt lỗi phát âm kéo dài `/uː/` thay vì nguyên âm ngắn `/ʊ/` trong `good`, trừ điểm rớt dưới 80%, hiển thị thẻ so sánh âm vị người học vs British RP.
+- [x] Đảm bảo 100% Quality Gates: Vitest 123/123 tests green, Pytest 3/3 green, TypeScript strict 0 errors, ESLint 0 warnings, Next.js Production Build thành công.
+
+## [>] Vị Trí Hiện Tại: [Đã Hoàn Tất 100% 6 Vấn Đề Nâng Cấp Từ Vựng 3D - Nhánh feature/vocabulary-6-enhancements]
