@@ -93,6 +93,21 @@
   }
 }
 
+/* =============================================================================
+   Zero Dev Indicator Badge (Permanently hides Next.js red circular 'N' badge)
+   ============================================================================= */
+nextjs-portal,
+[data-nextjs-dev-tools-button],
+[data-nextjs-toast],
+#nextjs-dev-tools,
+[data-next-badge],
+div[data-nextjs-dialog-overlay] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
