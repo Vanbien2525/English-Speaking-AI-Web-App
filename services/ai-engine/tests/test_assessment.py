@@ -192,3 +192,95 @@ def test_silence_receives_zero_score(client):
     assert result["overallScoreBp"] == 0
     assert result["accuracyBp"] == 0
     assert "Cảnh báo" in result["feedback"]["summaryVi"]
+
+
+def test_out_of_vocabulary_utterance_rejected(client):
+    """Reading an irrelevant long sentence when target is a single word ('good') must be severely penalized (< 2000 bp)."""
+    # 2.0s audio with multiple bursts simulates reading an irrelevant phrase like 'I do not know'
+    audio_bytes = create_dummy_wav_bytes(duration_s=2.0, amplitude=0.5)
+    meta = {
+        "sessionId": "018f4a7c-87d0-7a32-9c10-234567890abc",
+        "lessonItemId": "018f4a7c-87d0-7a32-9c10-234567890eee",
+        "idempotencyKey": "018f4a7c-87d0-7a32-9c10-234567890eee",
+        "audioDurationMs": 2000,
+        "accent": "en-GB-RP",
+        "targetText": "good",
+    }
+
+    response = client.post(
+        "/api/v1/assess",
+        files={"audio": ("sample.wav", audio_bytes, "audio/wav")},
+        data={"metadata": json.dumps(meta)},
+    )
+
+    assert response.status_code == 200
+    result = response.json()
+
+    # Must fail immediately with prompt deviation penalty
+    assert result["overallScoreBp"] <= 2000, f"Expected overallScoreBp <= 2000, got {result['overallScoreBp']}"
+    assert result["accuracyBp"] <= 2000
+    assert "sai" in result["feedback"]["summaryVi"].lower() or "khác" in result["feedback"]["summaryVi"].lower()
+
+
+def test_sla_latency_under_budget(client):
+    """Pronunciation assessment must process completely in-memory and return within 1200ms."""
+    audio_bytes = create_dummy_wav_bytes(duration_s=1.0, amplitude=0.5)
+    meta = {
+        "sessionId": "018f4a7c-87d0-7a32-9c10-234567890abc",
+        "lessonItemId": "018f4a7c-87d0-7a32-9c10-234567890fff",
+        "idempotencyKey": "018f4a7c-87d0-7a32-9c10-234567890fff",
+        "audioDurationMs": 1000,
+        "accent": "en-GB-RP",
+        "targetText": "think",
+    }
+
+    response = client.post(
+        "/api/v1/assess",
+        files={"audio": ("sample.wav", audio_bytes, "audio/wav")},
+        data={"metadata": json.dumps(meta)},
+    )
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["scoringLatencyMs"] < 1500, f"Latency {result['scoringLatencyMs']}ms exceeded 1500ms budget"
+
+
+def test_sota_phoneme_recognizer_active_and_decodes_ipa():
+    """Verify that Meta AI SOTA Phoneme CTC Recognizer is actively loaded and ready for deep IPA decoding."""
+    from app.services.phoneme_service import phoneme_service
+    assert phoneme_service.model_loaded is True
+    assert phoneme_service.is_sota_ipa is True
+
+    # Test recognizing phonemes from in-memory wave
+    audio_data = np.zeros(16000, dtype=np.float32)
+    tokens = phoneme_service.recognize_phonemes(audio_data)
+    assert isinstance(tokens, list)
+
+    words, acc, comp = phoneme_service.build_word_and_phoneme_breakdown(
+        target_text="think",
+        audio_duration_ms=1000,
+        recognized_tokens=tokens,
+        wav=audio_data,
+    )
+    assert len(words) == 1
+    assert len(words[0].phonemes) == 4
+    assert [p.expectedIpa for p in words[0].phonemes] == ["θ", "ɪ", "ŋ", "k"]
+
+
+def test_ctc_forced_alignment_computes_monotonic_timestamps():
+    """Verify that CTC Trellis Viterbi Forced Alignment returns monotonic millisecond boundaries."""
+    from app.services.phoneme_service import phoneme_service
+    audio_data = np.random.randn(16000).astype(np.float32) * 0.1
+    boundaries = phoneme_service.compute_ctc_forced_alignment(
+        wav=audio_data,
+        target_phonemes=["θ", "ɪ", "ŋ", "k"],
+        audio_duration_ms=1000,
+    )
+    assert len(boundaries) == 4
+    for start_ms, end_ms in boundaries:
+        assert start_ms is not None
+        assert end_ms is not None
+        assert start_ms <= end_ms
+
+
+

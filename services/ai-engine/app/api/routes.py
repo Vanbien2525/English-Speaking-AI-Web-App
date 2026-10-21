@@ -117,25 +117,33 @@ async def assess_pronunciation(
     # Weighted composite overall score: 50% accuracy + 35% completeness + 15% fluency
     overall_bp = int(round(0.50 * accuracy_bp + 0.35 * completeness_bp + 0.15 * fluency_bp))
 
-    # CRITICAL GATING RULES:
+    # CRITICAL ZERO-TOLERANCE GATING RULES:
     # Rule 1: Silence / Inaudible utterance check
     if completeness_bp == 0 or accuracy_bp == 0:
         overall_bp = 0
         fluency_bp = 0
         prosodic_bp = 0
     else:
-        # Rule 2: If phonemic accuracy is poor (< 8000), overall score cannot exceed accuracy
+        # Rule 2: Out-of-Vocabulary / Prompt Deviation (Speaking irrelevant words/sentences)
+        is_oov = any(w.accuracyBp <= 1500 for w in words) and len(words) == 1 and duration_ms > 1200
+        if is_oov:
+            overall_bp = min(overall_bp, 1500)
+            accuracy_bp = min(accuracy_bp, 1500)
+            fluency_bp = min(fluency_bp, 2000)
+            prosodic_bp = min(prosodic_bp, 2000)
+
+        # Rule 3: If phonemic accuracy is poor (< 8000), overall score cannot exceed accuracy
         if accuracy_bp < 8000:
             overall_bp = min(overall_bp, accuracy_bp)
 
-        # Rule 3: If there is any major articulatory error (e.g. vowel elongation /uː/ instead of /ʊ/,
-        # substituted or omitted phonemes), strictly cap overall score at 6500 (65%) so attempt cannot pass (< 80%)
+        # Rule 4: If there is any major articulatory error (e.g. vowel elongation /uː/ instead of /ʊ/,
+        # final consonant omission /k/, /t/, substituted dental fricative /θ/), strictly cap overall score at 6200 (62%)
         has_major_error = any(
             any(p.severity == "major" for p in w.phonemes)
             for w in words
         )
         if has_major_error:
-            overall_bp = min(overall_bp, 6500)
+            overall_bp = min(overall_bp, 6200)
 
     overall_bp = max(0, min(10000, overall_bp))
 

@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     phase2_phoneme_ctc_subdir: str = "phase2_phoneme_ctc"
     phase3_llama_subdir: str = "phase3_llama_tutor"
 
+    # Phoneme ASR SOTA Model
+    phoneme_model_name: str = os.getenv("PHONEME_MODEL_NAME", "facebook/wav2vec2-xlsr-53-espeak-cv-ft")
+
     # Ollama integration
     ollama_url: str = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
     ollama_model: str = os.getenv("OLLAMA_MODEL", "speaking-tutor-llama3")

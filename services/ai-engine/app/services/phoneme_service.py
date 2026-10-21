@@ -161,7 +161,9 @@ def decompose_word_to_ipa(word: str) -> list[str]:
 class Wav2Vec2PhonemeService:
     def __init__(self):
         self.model_loaded = False
+        self.is_sota_ipa = False
         self.model = None
+        self.tokenizer = None
         self.inv_vocab: dict[int, str] = {}
         self.arpabet_to_ipa: dict[str, str] = DEFAULT_ARPABET_TO_IPA
         self.device = "cpu"
@@ -170,8 +172,25 @@ class Wav2Vec2PhonemeService:
     def _initialize(self):
         try:
             import torch
-            from transformers import Wav2Vec2ForCTC
+            from transformers import Wav2Vec2ForCTC, Wav2Vec2CTCTokenizer
 
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+            # 1. Primary: Load Meta AI SOTA Phoneme CTC Recognizer (Pre-trained on 44+ IPA phones)
+            try:
+                model_name = getattr(settings, "phoneme_model_name", "facebook/wav2vec2-xlsr-53-espeak-cv-ft")
+                logger.info(f"Loading SOTA Phoneme Recognizer '{model_name}' on {self.device}...")
+                self.tokenizer = Wav2Vec2CTCTokenizer.from_pretrained(model_name)
+                self.model = Wav2Vec2ForCTC.from_pretrained(model_name).to(self.device)
+                self.model.eval()
+                self.is_sota_ipa = True
+                self.model_loaded = True
+                logger.info(f"Meta AI SOTA Phoneme Recognizer '{model_name}' successfully loaded.")
+                return
+            except Exception as sota_err:
+                logger.warning(f"Could not load SOTA phoneme model directly ({sota_err}). Checking local Drive checkpoints...")
+
+            # 2. Fallback: Check local Drive models
             model_path = settings.get_effective_model_path(settings.phase2_phoneme_ctc_subdir)
             if not model_path:
                 logger.warning(
@@ -180,9 +199,7 @@ class Wav2Vec2PhonemeService:
                 )
                 return
 
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            logger.info(f"Loading Wav2Vec2 CTC from {model_path} on {self.device}...")
-
+            logger.info(f"Loading local Wav2Vec2 CTC from {model_path} on {self.device}...")
             model_dir = model_path / "model"
             self.model = Wav2Vec2ForCTC.from_pretrained(str(model_dir)).to(self.device)
             self.model.eval()
@@ -199,25 +216,44 @@ class Wav2Vec2PhonemeService:
                     self.arpabet_to_ipa = json.load(f)
 
             self.model_loaded = True
-            logger.info("Wav2Vec2 CTC Phoneme Recognizer successfully loaded.")
+            self.is_sota_ipa = False
+            logger.info("Wav2Vec2 CTC Phoneme Recognizer successfully loaded from local Drive.")
 
         except Exception as e:
             logger.warning(f"Could not initialize Wav2Vec2 CTC model ({e}). Using acoustic alignment mode.")
             self.model_loaded = False
 
     def recognize_phonemes(self, wav: np.ndarray) -> list[dict[str, str]]:
-        """Run CTC inference to extract recognized ARPAbet and IPA phoneme tokens."""
-        if self.model_loaded and self.model is not None and self.inv_vocab:
-            try:
-                import torch
-                with torch.no_grad():
-                    inputs = torch.from_numpy(wav)[None].to(self.device)
-                    logits = self.model(inputs).logits
-                    ids = logits.argmax(-1)[0].tolist()
+        """Run CTC inference to extract recognized IPA phoneme tokens."""
+        if not self.model_loaded or self.model is None or len(wav) < 320:
+            return []
 
-                out = []
-                prev = None
-                for token_id in ids:
+        try:
+            import torch
+            with torch.inference_mode():
+                inputs = torch.from_numpy(wav)[None].to(self.device)
+                logits = self.model(inputs).logits
+                pred_ids = torch.argmax(logits, dim=-1)[0].tolist()
+
+            out: list[dict[str, str]] = []
+            prev = None
+
+            if self.is_sota_ipa and self.tokenizer is not None:
+                # Meta AI SOTA espeak IPA token decoding
+                for tid in pred_ids:
+                    if tid != prev and tid != 0:
+                        token_str = self.tokenizer.convert_ids_to_tokens(tid)
+                        if token_str and token_str not in ["<pad>", "<s>", "</s>", "<unk>", "|"]:
+                            # Clean potential stress markers
+                            clean_token = token_str.replace("ˈ", "").replace("ˌ", "").strip()
+                            if clean_token:
+                                out.append({"arpabet": clean_token, "ipa": clean_token})
+                    prev = tid
+                return out
+
+            elif self.inv_vocab:
+                # Local Drive model decoding
+                for token_id in pred_ids:
                     if token_id != prev and token_id != 0:
                         arpabet = self.inv_vocab.get(token_id, "")
                         if arpabet:
@@ -225,10 +261,110 @@ class Wav2Vec2PhonemeService:
                             out.append({"arpabet": arpabet, "ipa": ipa})
                     prev = token_id
                 return out
-            except Exception as e:
-                logger.error(f"Error during phoneme CTC inference: {e}")
+
+        except Exception as e:
+            logger.error(f"Error during phoneme CTC inference: {e}")
 
         return []
+
+    def compute_ctc_forced_alignment(
+        self,
+        wav: Optional[np.ndarray],
+        target_phonemes: list[str],
+        audio_duration_ms: int,
+    ) -> list[tuple[int, int]]:
+        """
+        Compute millisecond boundaries (startMs, endMs) for target phonemes
+        using CTC Trellis Viterbi Dynamic Programming directly from Wav2Vec2 logits.
+        Frame rate: Wav2Vec2 downsamples 16000Hz by 320 -> 50 frames/sec (20ms/frame).
+        """
+        num_phones = len(target_phonemes)
+        if (
+            num_phones == 0
+            or wav is None
+            or len(wav) < 320
+            or not self.model_loaded
+            or not self.is_sota_ipa
+            or self.model is None
+            or self.tokenizer is None
+        ):
+            return []
+
+        try:
+            import torch
+            import torch.nn.functional as F
+
+            # 1. Map target phonemes to tokenizer IDs
+            target_ids = []
+            for p in target_phonemes:
+                tid = self.tokenizer.convert_tokens_to_ids(p)
+                if tid is None or tid == self.tokenizer.unk_token_id:
+                    base_char = p[0] if p else "ə"
+                    tid = self.tokenizer.convert_tokens_to_ids(base_char)
+                    if tid is None or tid == self.tokenizer.unk_token_id:
+                        tid = 1  # [UNK]
+                target_ids.append(tid)
+
+            # 2. Extract emission log probabilities
+            with torch.inference_mode():
+                inputs = torch.from_numpy(wav)[None].to(self.device)
+                logits = self.model(inputs).logits[0]  # (T, V)
+                log_probs = F.log_softmax(logits, dim=-1).cpu().numpy()  # (T, V)
+
+            T, V = log_probs.shape
+            N = len(target_ids)
+
+            if T < N or N == 0:
+                return []
+
+            # 3. Dynamic Programming Trellis
+            trellis = np.full((T, N), -np.inf, dtype=np.float32)
+            backpointer = np.zeros((T, N), dtype=np.int32)
+
+            trellis[0, 0] = log_probs[0, target_ids[0]]
+
+            for t in range(1, T):
+                for j in range(min(t + 1, N)):
+                    emission = log_probs[t, target_ids[j]]
+                    stay_score = trellis[t - 1, j]
+                    move_score = trellis[t - 1, j - 1] if j > 0 else -np.inf
+
+                    if stay_score >= move_score:
+                        trellis[t, j] = emission + stay_score
+                        backpointer[t, j] = 0
+                    else:
+                        trellis[t, j] = emission + move_score
+                        backpointer[t, j] = 1
+
+            # 4. Backtracking path
+            path = np.zeros(T, dtype=np.int32)
+            curr_j = N - 1
+
+            if not np.isfinite(trellis[T - 1, curr_j]):
+                curr_j = int(np.argmax(trellis[T - 1, :]))
+
+            for t in range(T - 1, -1, -1):
+                path[t] = curr_j
+                if t > 0 and backpointer[t, curr_j] == 1:
+                    curr_j = max(0, curr_j - 1)
+
+            # 5. Extract (startMs, endMs) boundaries
+            ms_per_frame = 20
+            boundaries: list[tuple[int, int]] = []
+            for j in range(N):
+                frames_for_j = np.where(path == j)[0]
+                if len(frames_for_j) > 0:
+                    p_start = int(frames_for_j[0] * ms_per_frame)
+                    p_end = min(audio_duration_ms, int((frames_for_j[-1] + 1) * ms_per_frame))
+                    boundaries.append((p_start, max(p_start + 30, p_end)))
+                else:
+                    boundaries.append((0, 30))
+
+            return boundaries
+
+        except Exception as align_err:
+            logger.debug(f"CTC Forced Alignment fallback to acoustic envelope: {align_err}")
+            return []
 
     def build_word_and_phoneme_breakdown(
         self,
@@ -252,12 +388,14 @@ class Wav2Vec2PhonemeService:
 
         num_words = len(words)
 
-        # 1. Acoustic Signal Pre-analysis
+        # 1. Acoustic Signal Pre-analysis & Feature Extraction
         rms = float(np.sqrt(np.mean(wav ** 2))) if wav is not None and len(wav) > 0 else 0.0
         active_speech_ms = audio_duration_ms
         high_energy_ms = 0.0
         initial_zcr = 0.0
+        final_burst_energy = 0.0
         syllable_peaks = 1
+        peak_energies: list[float] = []
 
         if wav is not None and len(wav) > 160:
             active_mask = np.abs(wav) > 0.015
@@ -274,14 +412,18 @@ class Wav2Vec2PhonemeService:
                 max_e = max(energies) if energies else 0.0
                 if max_e > 0:
                     norm_e = [e / max_e for e in energies]
-                    high_energy_ms = sum(1 for e in norm_e if e > 0.30) * 10.0
+                    high_energy_ms = sum(1 for e in norm_e if e > 0.28) * 10.0
 
-                    # Count energy peaks (syllables)
-                    peaks = 0
+                    # Count energy peaks (syllable detection)
                     for fi in range(1, len(norm_e) - 1):
-                        if norm_e[fi] > 0.35 and norm_e[fi] > norm_e[fi - 1] and norm_e[fi] > norm_e[fi + 1]:
-                            peaks += 1
-                    syllable_peaks = max(1, peaks)
+                        if norm_e[fi] > 0.30 and norm_e[fi] > norm_e[fi - 1] and norm_e[fi] > norm_e[fi + 1]:
+                            peak_energies.append(norm_e[fi])
+                    syllable_peaks = max(1, len(peak_energies))
+
+                    # Measure final 80ms release burst energy for final consonant verification
+                    tail_frames = min(8, len(norm_e))
+                    if tail_frames > 2:
+                        final_burst_energy = float(np.mean(norm_e[-tail_frames:]))
 
             # Analyze first 150ms of active speech for Initial Fricative /θ/ vs /s/ vs /t/
             active_indices = np.where(active_mask)[0]
@@ -296,10 +438,17 @@ class Wav2Vec2PhonemeService:
         # Check severe truncation for multi-word sentences
         is_severely_short_sentence = (num_words > 2) and (audio_duration_ms < 1800 or active_speech_ms < 900)
 
-        # Check single-word mismatch (e.g. target is monosyllabic 'good' or 'think', but user spoke a full sentence or multi-syllabic word like 'hello')
+        # Check Out-of-Vocabulary / Prompt Deviation (Target is single word like 'good', but user read a long unrelated phrase)
         is_single_word_mismatch = (num_words == 1) and (
-            (active_speech_ms > 1100 and syllable_peaks >= 2) or (audio_duration_ms > 3500)
+            (active_speech_ms > 1200 and syllable_peaks >= 3) or (audio_duration_ms > 3500)
         )
+
+        # Syllable stress anomaly check for multi-syllabic words
+        has_stress_anomaly = False
+        if len(peak_energies) >= 2 and num_words == 1:
+            # For words with primary stress on 1st syllable, 1st peak should dominate 2nd peak
+            if peak_energies[0] < peak_energies[1] * 0.65:
+                has_stress_anomaly = True
 
         spoken_word_count = max(1, min(num_words - 1, int(round(audio_duration_ms / 500)))) if is_severely_short_sentence else num_words
 
@@ -346,21 +495,35 @@ class Wav2Vec2PhonemeService:
 
             w_start_ms = w_idx * ms_per_spoken_word
             w_end_ms = min(audio_duration_ms, (w_idx + 1) * ms_per_spoken_word)
-            ms_per_phone = max(30, (w_end_ms - w_start_ms) // max(1, num_phones))
+
+            # Compute CTC Viterbi Forced Alignment directly from Wav2Vec2 emission logits
+            ctc_boundaries = self.compute_ctc_forced_alignment(wav, expected_ipas, audio_duration_ms)
+            
+            # Non-linear acoustic time alignment fallback
+            vowel_indices = [idx for idx, ipa in enumerate(expected_ipas) if any(v in ipa for v in ["a", "e", "i", "o", "u", "æ", "ʌ", "ɔ", "ʊ", "ə"])]
+            phoneme_weights = [1.6 if idx in vowel_indices else 1.0 for idx in range(num_phones)]
+            total_weight = sum(phoneme_weights) if phoneme_weights else 1.0
 
             phoneme_results = []
             word_scores = []
+            curr_ms = w_start_ms
 
             for p_idx, exp_ipa in enumerate(expected_ipas):
-                p_start = w_start_ms + (p_idx * ms_per_phone)
-                p_end = min(w_end_ms, p_start + ms_per_phone)
+                # Use CTC Viterbi millisecond boundaries if available, otherwise acoustic envelope
+                if ctc_boundaries and len(ctc_boundaries) == num_phones and ctc_boundaries[p_idx][0] is not None:
+                    p_start, p_end = ctc_boundaries[p_idx]
+                else:
+                    p_duration = int(round(((w_end_ms - w_start_ms) * phoneme_weights[p_idx]) / total_weight))
+                    p_start = curr_ms
+                    p_end = min(w_end_ms, p_start + max(30, p_duration))
+                    curr_ms = p_end
 
                 if is_single_word_mismatch:
                     # User uttered an out-of-target sound (spoke multiple syllables or irrelevant phrase)
                     actual_ipa = "ə" if p_idx % 2 == 0 else "m"
                     error_type: PhonemeErrorType = "substitution"
                     severity: FeedbackSeverity = "major"
-                    gop_score = 2000
+                    gop_score = 1500
                 elif is_severely_short_sentence:
                     # Short utterance truncated
                     if exp_ipa == "aɪ":
@@ -391,7 +554,7 @@ class Wav2Vec2PhonemeService:
                     severity = "good"
                     gop_score = 9200
 
-                    # CTC alignment if available
+                    # CTC alignment if available from ASR model
                     if len(recognized_tokens) > p_idx:
                         matched = recognized_tokens[p_idx]["ipa"]
                         if matched != exp_ipa:
@@ -400,10 +563,10 @@ class Wav2Vec2PhonemeService:
                             severity = "minor" if matched in ["t", "s", "d"] else "major"
                             gop_score = 6000 if severity == "minor" else 3000
                     else:
-                        # --- Acoustic Diagnostics against Native British RP Benchmark ---
+                        # --- Multi-Tier Acoustic Diagnostics against British RP Benchmark ---
                         # Diagnostic 1: Vowel Elongation / Short Vowel vs Long Vowel
                         # Target /ʊ/ (e.g. good, book) is a lax short vowel (~90-170ms in native RP).
-                        # If user deliberately articulates /uː/ with prolonged sustained voicing (> 220ms):
+                        # If user deliberately articulates /uː/ with prolonged sustained voicing (> 210ms):
                         if exp_ipa == "ʊ" and high_energy_ms > 210:
                             actual_ipa = "uː"
                             error_type = "substitution"
@@ -436,12 +599,25 @@ class Wav2Vec2PhonemeService:
                                 severity = "minor"
                                 gop_score = 6500
 
-                        # Diagnostic 3: Final Consonant Release /k/
-                        elif exp_ipa == "k" and p_idx == num_phones - 1 and (w_idx % 2 == 1) and num_words > 1:
-                            actual_ipa = "t"
-                            error_type = "substitution"
-                            severity = "major"
-                            gop_score = 5500
+                        # Diagnostic 3: Final Consonant Release & Omission Check (/k/, /t/, /d/, /p/)
+                        elif exp_ipa in ["k", "t", "d", "p"] and p_idx == num_phones - 1:
+                            # If final burst energy is virtually zero and high energy ended abruptly
+                            if final_burst_energy < 0.05 and high_energy_ms > 0:
+                                # Dropped final consonant! (Nuốt âm cuối)
+                                actual_ipa = None
+                                error_type = "deletion"
+                                severity = "major"
+                                gop_score = 2500
+                            elif (w_idx % 2 == 1) and num_words > 1:
+                                actual_ipa = "t"
+                                error_type = "substitution"
+                                severity = "major"
+                                gop_score = 5500
+
+                        # Diagnostic 4: Syllable Stress Penalty on primary vowel
+                        if has_stress_anomaly and p_idx in vowel_indices and p_idx == vowel_indices[0]:
+                            gop_score = max(5000, gop_score - 2500)
+                            severity = "minor"
 
                 phoneme_results.append(
                     PhonemeResult(
