@@ -45,9 +45,10 @@
 - [x] Giao diện Studio Flashcard 3D: `src/modules/vocabulary` (Thẻ lật 3D CSS perspective, mô hình khoang miệng 3D mini `VocabOralCanvas`, Web Audio Waveform, giọng đọc chuẩn British RP)
 - [x] Cơ chế "Phát Âm Đúng Mới Tính Là Thuộc" (Speaking-Verified Mastery): Bắt buộc mic đọc >= 80 điểm mới thăng hạng SM-2 và ghi nhận vào Sổ Cái XP
 - [x] Nhập 1-Chạm (`QuickAddModal`) & Nhập hàng loạt tối đa 20 từ (`BatchImportModal`)
-- [x] Kiểm thử tự động Vitest: 19 test files, 118/118 tests passed 100% (Backend acceptance + Unit SM-2 + DTO + Frontend components)
-- [x] Kiểm tra TypeScript Strict (0 lỗi), ESLint (0 lỗi/warnings), Production Build (Next.js 16 webpack) thành công 100%
-- [x] Commit hoàn tất vào nhánh `feature/active-vocabulary-3d`: `c77e774`
+- [x] Giai đoạn 5: Chuẩn hóa quy trình Golden Issue-First Jules Flow (Issue #9 gắn nhãn `jules` -> Jules Cloud VM audit & patch -> Jules mở PR #11)
+- [x] Giai đoạn 5: Dual-Green Passed (Jules Cloud VM Audit + GitHub Actions Enterprise CI Pipeline Run 39569521322 Xanh 100%)
+- [x] Giai đoạn 5: Squash and Merge PR #11 vào main (Commit `f9fdfa8`), đóng PR #10 trùng lặp & đóng Issue #9
+- [x] Giai đoạn 5: Dọn dẹp an toàn các branch ephemeral `feature/active-vocabulary-3d` và xuất bản báo cáo nghiệm thu `.agents/reports/feature-04-active-vocabulary-3d.md`
 
 ## [x] Phân Hệ Speech AI Engine: Huấn Luyện & Tích Hợp Microservice (HOÀN THÀNH 100%)
 - [x] Huấn luyện A100 hoàn tất 3/3 Phase (Wav2Vec2 Scorer 5 thang điểm, Wav2Vec2 CTC Phoneme 600 câu L2-ARCTIC tiếng Việt, Llama 3.1 8B SFT gia sư 3D Viseme)
@@ -56,4 +57,4 @@
 - [x] Pytest tích hợp AI Engine Pass 100% (2/2 tests green, latency < 1500ms SLA)
 - [x] Target Phrase Alignment & Dynamic Client Routing hoàn tất
 
-## [>] Vị Trí Hiện Tại: [Hoàn thành toàn diện Nhóm A.5 - Sẵn sàng Push Branch & Mở PR Duy Nhất]
+## [>] Vị Trí Hiện Tại: [Hoàn Thành 4 Tính Năng Cốt Lõi + AI Engine - Sẵn Sàng Release Candidate v1.0.0]
