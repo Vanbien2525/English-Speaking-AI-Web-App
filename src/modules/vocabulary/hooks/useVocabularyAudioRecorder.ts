@@ -1,5 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
+import { convertBlobToWav } from "@/shared/lib/audio-wav";
+import type { CreateAttemptMeta, PronunciationAssessment } from "@/core/dto/shared.dto";
 
 const MIN_RECORDING_DURATION_MS = 400;
 
@@ -108,7 +110,7 @@ export function useVocabularyAudioRecorder() {
         recorder.onstop = async () => {
           const durationMs = Date.now() - startTimeRef.current;
           const mimeType = recorder.mimeType || "audio/webm";
-          const audioBlob = new Blob(chunksRef.current, { type: mimeType });
+          const rawBlob = new Blob(chunksRef.current, { type: mimeType });
           chunksRef.current = [];
           cleanupStream();
 
@@ -120,11 +122,22 @@ export function useVocabularyAudioRecorder() {
 
           setIsEvaluating(true);
           try {
-            // Attempt live assessment via practice API
+            // Convert WebM/Opus blob to standard 16kHz PCM 16-bit Mono WAV in memory
+            const wavBlob = await convertBlobToWav(rawBlob, 16000);
+
+            // Create standardized assessment metadata
+            const metadata: CreateAttemptMeta = {
+              sessionId: crypto.randomUUID(),
+              lessonItemId: "019488a0-7b24-789a-bcde-000000000010",
+              idempotencyKey: crypto.randomUUID(),
+              audioDurationMs: Math.max(400, Math.min(15000, durationMs)),
+              accent: "en-GB-RP",
+              targetText: targetWord,
+            };
+
             const formData = new FormData();
-            formData.append("audio", audioBlob, "vocab-attempt.webm");
-            formData.append("targetText", targetWord);
-            formData.append("targetPhonemes", "");
+            formData.append("audio", wavBlob, "vocab-attempt.wav");
+            formData.append("metadata", JSON.stringify(metadata));
 
             const res = await fetch("/api/practice/assess", {
               method: "POST",
@@ -132,30 +145,37 @@ export function useVocabularyAudioRecorder() {
             });
 
             if (res.ok) {
-              const data = await res.json();
-              const scoreBp = typeof data.scoreBp === "number" ? data.scoreBp : 8500;
+              const data = (await res.json()) as PronunciationAssessment;
+              const overallScoreBp = typeof data.overallScoreBp === "number" ? data.overallScoreBp : 0;
+              const isPassed = overallScoreBp >= 8000;
+
               setIsEvaluating(false);
               resolve({
-                pronunciationScoreBp: scoreBp,
+                pronunciationScoreBp: overallScoreBp,
                 durationMs,
-                isPassed: scoreBp >= 8000,
+                isPassed,
                 recognizedText: data.recognizedText,
               });
               return;
             }
-          } catch {
-            // Fallback gracefully if speech service offline
+
+            const errJson = await res.json().catch(() => null);
+            toast.error(
+              errJson?.error?.message || "Lỗi chấm điểm từ AI Engine. Vui lòng kiểm tra microservice.",
+            );
+          } catch (err: unknown) {
+            const error = err as Error;
+            toast.error(`Không thể kết nối AI Engine: ${error.message}`);
           }
 
-          // Fallback simulation when external AI Engine is not connected
-          // Generates realistic evaluation score between 82% and 93% for demonstration
-          const fallbackScoreBp = Math.floor(8200 + Math.random() * 1100);
+          // If AI assessment service failed, DO NOT give fake passing scores.
+          // Mark attempt as unpassed with 0 points so speaking verification remains strict.
           setIsEvaluating(false);
           resolve({
-            pronunciationScoreBp: fallbackScoreBp,
+            pronunciationScoreBp: 0,
             durationMs,
-            isPassed: fallbackScoreBp >= 8000,
-            recognizedText: targetWord,
+            isPassed: false,
+            recognizedText: "",
           });
         };
 

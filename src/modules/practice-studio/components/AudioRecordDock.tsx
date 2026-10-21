@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { usePracticeStore } from "../stores/usePracticeStore";
 import { AudioWaveformVisualizer } from "./AudioWaveformVisualizer";
+import { convertBlobToWav } from "@/shared/lib/audio-wav";
 import type { CreateAttemptMeta, PronunciationAssessment } from "@/core/dto/shared.dto";
 
 export function AudioRecordDock() {
@@ -34,6 +35,9 @@ export function AudioRecordDock() {
     toast.loading("AI đang phân tích từng âm vị ngữ âm học...", { id: "scoring-toast" });
 
     try {
+      // In-memory conversion to standard 16kHz PCM WAV
+      const wavBlob = await convertBlobToWav(blob, 16000);
+
       const metadata: CreateAttemptMeta = {
         sessionId: "019488a0-7b24-789a-bcde-000000000002",
         lessonItemId: lesson.id,
@@ -44,7 +48,7 @@ export function AudioRecordDock() {
       };
 
       const formData = new FormData();
-      formData.append("audio", blob, "recording.wav");
+      formData.append("audio", wavBlob, "recording.wav");
       formData.append("metadata", JSON.stringify(metadata));
 
       const response = await fetch("/api/practice/assess", {
