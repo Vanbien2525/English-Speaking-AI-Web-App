@@ -36,22 +36,24 @@
 - [x] Giai đoạn 5: Xuất bản báo cáo nghiệm thu `.agents/reports/feature-03-gamification-and-progress.md`
 - [x] Giai đoạn 5: Squash and Merge PR #8 vào main (Commit `816a99f`), dọn dẹp branch & đóng Issue #7
 
+## [x] Tính Năng 4: Nhóm A.5 - Từ Vựng Phản Xạ Nói & Thẻ 3D (Active Vocabulary & Speaking Mastery) (HOÀN THÀNH 100%)
+- [x] Đặc tả kiến trúc kỹ thuật & kế hoạch TDD: `.agents/specs/active-vocabulary-3d.spec.md` & `.agents/plans/active-vocabulary-3d.plan.md`
+- [x] Schema DDL PostgreSQL 16: `database/migrations/0002_active_vocabulary.sql` (`vocabulary_decks`, `vocabulary_items`, `flashcard_reviews`)
+- [x] Pure Domain SM-2 Calculator: `src/core/domain/sm2.ts` (Số học nguyên basis points, chất lượng q = 0..5, ngưỡng phát âm đạt chuẩn >= 8000 bp / 80%)
+- [x] Tích hợp Free Dictionary API & Fallback Dictionary Llama: `src/core/services/vocabulary-service.ts`
+- [x] Bộ API Route Handlers: `/api/vocabulary/enrich`, `/api/vocabulary/batch-import`, `/api/vocabulary/decks`, `/api/vocabulary/items`, `/api/vocabulary/review/due`, `/api/vocabulary/review/submit`
+- [x] Giao diện Studio Flashcard 3D: `src/modules/vocabulary` (Thẻ lật 3D CSS perspective, mô hình khoang miệng 3D mini `VocabOralCanvas`, Web Audio Waveform, giọng đọc chuẩn British RP)
+- [x] Cơ chế "Phát Âm Đúng Mới Tính Là Thuộc" (Speaking-Verified Mastery): Bắt buộc mic đọc >= 80 điểm mới thăng hạng SM-2 và ghi nhận vào Sổ Cái XP
+- [x] Nhập 1-Chạm (`QuickAddModal`) & Nhập hàng loạt tối đa 20 từ (`BatchImportModal`)
+- [x] Kiểm thử tự động Vitest: 19 test files, 118/118 tests passed 100% (Backend acceptance + Unit SM-2 + DTO + Frontend components)
+- [x] Kiểm tra TypeScript Strict (0 lỗi), ESLint (0 lỗi/warnings), Production Build (Next.js 16 webpack) thành công 100%
+- [x] Commit hoàn tất vào nhánh `feature/active-vocabulary-3d`: `c77e774`
+
 ## [x] Phân Hệ Speech AI Engine: Huấn Luyện & Tích Hợp Microservice (HOÀN THÀNH 100%)
 - [x] Huấn luyện A100 hoàn tất 3/3 Phase (Wav2Vec2 Scorer 5 thang điểm, Wav2Vec2 CTC Phoneme 600 câu L2-ARCTIC tiếng Việt, Llama 3.1 8B SFT gia sư 3D Viseme)
 - [x] Xuất GGUF Q4_K_M và nạp thành công vào Ollama local (`speaking-tutor-llama3:latest` 8.0B 4.92GB)
 - [x] Microservice Python FastAPI (`services/ai-engine/app`) hoàn thiện 100%: Zero-Footprint In-Memory Audio, Wav2Vec2 Scorer, Phoneme CTC, Llama 3.1 8B Ollama Adapter, Edge-TTS British RP
 - [x] Pytest tích hợp AI Engine Pass 100% (2/2 tests green, latency < 1500ms SLA)
-- [x] Full-Stack Regression Vitest Pass 100% (91/91 tests green) & TypeScript Strict Typecheck 0 lỗi
+- [x] Target Phrase Alignment & Dynamic Client Routing hoàn tất
 
-## [>] Vòng Lặp Tiếp Theo: [Giai Đoạn Phát Hành - Final Release & Hardening]
-
-## [x] Giai Đoạn Phát Hành (Final Release v1.0.0)
-- [x] Chạy Full Regression Test Suite Pass 100% (91/91 Vitest tests green + 3/3 Pytest AI Engine tests green)
-- [x] TypeScript Strict Typecheck 0 lỗi (npm run typecheck)
-- [x] Next.js 16 Production Build thành công 100% (npm run build)
-- [x] Tích hợp E2E Microservice AI Engine (FastAPI) + Next.js BFF + Ollama Llama 3.1 8B Q4_K_M
-- [x] Cải tiến căn chỉnh âm vị (Target Phrase Alignment): phạt nặng điểm khi nói từ ngắn lạc đề (như 'hello' thay vì cả câu), tự động đánh dấu âm vị bỏ sót (deletion) và xuất cảnh báo tiếng Việt rõ ràng
-- [x] Dynamic Client Routing: Next.js BFF tự động chuyển đổi FastApiAiEngineClient sang FastAPI thực tế thay vì giữ Mock singleton
-- [x] Security Audit & Zero-Leakage Guardrails: .env.local bảo vệ an toàn trong .gitignore, không rò rỉ secret
-- [x] Sẵn sàng gắn thẻ Release v1.0.0 và chạy thực nghiệm E2E người dùng trên trình duyệt
-
+## [>] Vị Trí Hiện Tại: [Hoàn thành toàn diện Nhóm A.5 - Sẵn sàng Push Branch & Mở PR Duy Nhất]
