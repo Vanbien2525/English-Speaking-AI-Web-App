@@ -6,19 +6,20 @@ import "@fontsource/be-vietnam-pro/700.css";
 import "@fontsource/charis-sil/400.css";
 import "./globals.css";
 import { AppProviders } from "@/shared/providers/AppProviders";
+import { AppNavbar } from "@/components/navigation/AppNavbar";
 
 export const metadata: Metadata = {
   title: {
-    default: "AI Speaking Tutor 3D",
-    template: "%s · AI Speaking Tutor 3D",
+    default: "AI Speaking Tutor 3D · Học Phát Âm IPA Chuẩn Quốc Tế",
+    template: "%s · AI Speaking Tutor",
   },
   description:
-    "Luyện phát âm tiếng Anh chuẩn British RP với AI chấm điểm từng âm vị và mô phỏng 3D khẩu hình miệng.",
+    "Ứng dụng học phát âm tiếng Anh 44 âm IPA với AI chấm điểm từng âm vị, hướng dẫn khẩu hình chuẩn xác và phòng luyện tập phản xạ.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f1320",
-  colorScheme: "dark",
+  themeColor: "#f8fafc",
+  colorScheme: "light",
 };
 
 interface RootLayoutProps {
@@ -28,8 +29,11 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="vi">
-      <body>
-        <AppProviders>{children}</AppProviders>
+      <body className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans antialiased selection:bg-emerald-100 selection:text-emerald-900 flex flex-col">
+        <AppProviders>
+          <AppNavbar />
+          <div className="flex-1 flex flex-col">{children}</div>
+        </AppProviders>
       </body>
     </html>
   );
