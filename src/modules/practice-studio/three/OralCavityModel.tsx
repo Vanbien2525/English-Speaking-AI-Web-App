@@ -287,37 +287,37 @@ export function OralCavityModel() {
       {showAnatomicalLabels && (
         <>
           {/* Ghim 1: Răng cửa trên */}
-          <Html position={[0.11, 0.065, 0]} center distanceFactor={1.2}>
-            <div className="pointer-events-none select-none rounded-md bg-canvas/90 px-2 py-0.5 text-[10px] font-semibold text-sky-400 shadow-md backdrop-blur-md border border-sky-500/30">
-              Răng cửa trên (Upper Incisors)
+          <Html position={[0.13, 0.09, 0]} center distanceFactor={1.3}>
+            <div className="pointer-events-none select-none whitespace-nowrap rounded-full bg-slate-950/85 px-2.5 py-0.5 text-[9px] font-semibold text-sky-300 shadow-md backdrop-blur-md border border-sky-500/40 ring-1 ring-sky-500/20">
+              Răng cửa trên (Incisors)
             </div>
           </Html>
 
           {/* Ghim 2: Đầu lưỡi đặt giữa 2 răng - Trọng tâm âm /θ/ */}
-          <Html position={[0.13, -0.015, 0]} center distanceFactor={1.1}>
-            <div className="pointer-events-none select-none flex items-center gap-1 rounded-md bg-emerald-950/90 px-2.5 py-1 text-[11px] font-bold text-emerald-400 shadow-lg backdrop-blur-md border border-emerald-500/50 animate-pulse">
-              <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+          <Html position={[0.16, -0.02, 0]} center distanceFactor={1.2}>
+            <div className="pointer-events-none select-none whitespace-nowrap flex items-center gap-1.5 rounded-full bg-emerald-950/90 px-3 py-1 text-[10px] font-bold text-emerald-300 shadow-xl backdrop-blur-md border border-emerald-400/60 ring-2 ring-emerald-500/20 animate-pulse">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
               Đầu lưỡi kẹp giữa 2 răng (/θ/)
             </div>
           </Html>
 
           {/* Ghim 3: Ngạc mềm & Lưỡi gà */}
-          <Html position={[-0.08, 0.085, 0]} center distanceFactor={1.3}>
-            <div className="pointer-events-none select-none rounded-md bg-canvas/80 px-2 py-0.5 text-[10px] text-ink-muted backdrop-blur-md border border-border-subtle">
+          <Html position={[-0.12, 0.11, 0]} center distanceFactor={1.3}>
+            <div className="pointer-events-none select-none whitespace-nowrap rounded-full bg-slate-950/85 px-2.5 py-0.5 text-[9px] font-medium text-slate-300 shadow-md backdrop-blur-md border border-slate-700/60">
               Ngạc mềm (Velum)
             </div>
           </Html>
 
           {/* Ghim 4: Luồng khí ma sát */}
-          <Html position={[0.17, 0.035, 0]} center distanceFactor={1.3}>
-            <div className="pointer-events-none select-none rounded-md bg-cyan-950/80 px-2 py-0.5 text-[10px] font-medium text-cyan-300 backdrop-blur-md border border-cyan-500/30">
-              Luồng khí ma sát (Fricative Airflow)
+          <Html position={[0.22, 0.05, 0]} center distanceFactor={1.3}>
+            <div className="pointer-events-none select-none whitespace-nowrap rounded-full bg-cyan-950/85 px-2.5 py-0.5 text-[9px] font-medium text-cyan-300 shadow-md backdrop-blur-md border border-cyan-500/40">
+              Luồng khí ma sát (Airflow)
             </div>
           </Html>
 
           {/* Ghim 5: Dây thanh quản */}
-          <Html position={[-0.1, -0.24, 0]} center distanceFactor={1.4}>
-            <div className="pointer-events-none select-none rounded-md bg-canvas/80 px-2 py-0.5 text-[10px] text-ink-muted backdrop-blur-md border border-border-subtle">
+          <Html position={[-0.11, -0.21, 0]} center distanceFactor={1.3}>
+            <div className="pointer-events-none select-none whitespace-nowrap rounded-full bg-slate-950/85 px-2.5 py-0.5 text-[9px] font-medium text-slate-300 shadow-md backdrop-blur-md border border-slate-700/60">
               Dây thanh (Vocal Folds: Không rung)
             </div>
           </Html>

@@ -1,8 +1,6 @@
 ---
 description: "Quy chuẩn kỹ thuật và kiến trúc Front-end bất biến"
-globs:
-  - "src/components/**/*.tsx"
-  - "src/app/**/*.tsx"
+globs: "src/{components,app}/**/*.tsx"
 ---
 
 # Frontend Core Architecture & Safety Directives

@@ -1,11 +1,6 @@
 ---
 description: "Universal Backend API architecture, security guardrails, and error handling directives"
-globs:
-  - "src/server/**/*.ts"
-  - "src/api/**/*.ts"
-  - "src/app/api/**/*.ts"
-  - "src/controllers/**/*.ts"
-  - "src/services/**/*.ts"
+globs: "src/{server,api,app/api,controllers,services}/**/*.ts"
 ---
 
 # Backend Core Architecture & Security Directives

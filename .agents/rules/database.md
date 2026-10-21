@@ -1,11 +1,6 @@
 ---
 description: "Universal PostgreSQL architecture, performance, and data safety directives"
-globs:
-  - "src/db/**/*.ts"
-  - "src/server/**/*.ts"
-  - "prisma/schema.prisma"
-  - "drizzle/**/*.ts"
-  - "migrations/**/*.sql"
+globs: "src/{db,server}/**/*.ts, database/**/*.sql"
 ---
 
 # PostgreSQL Core Safety & Performance Directives
