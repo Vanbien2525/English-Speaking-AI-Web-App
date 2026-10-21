@@ -36,6 +36,13 @@
 - [x] Giai đoạn 5: Xuất bản báo cáo nghiệm thu `.agents/reports/feature-03-gamification-and-progress.md`
 - [x] Giai đoạn 5: Squash and Merge PR #8 vào main (Commit `816a99f`), dọn dẹp branch & đóng Issue #7
 
+## [x] Phân Hệ Speech AI Engine: Huấn Luyện & Tích Hợp Microservice (HOÀN THÀNH 100%)
+- [x] Huấn luyện A100 hoàn tất 3/3 Phase (Wav2Vec2 Scorer 5 thang điểm, Wav2Vec2 CTC Phoneme 600 câu L2-ARCTIC tiếng Việt, Llama 3.1 8B SFT gia sư 3D Viseme)
+- [x] Xuất GGUF Q4_K_M và nạp thành công vào Ollama local (`speaking-tutor-llama3:latest` 8.0B 4.92GB)
+- [x] Microservice Python FastAPI (`services/ai-engine/app`) hoàn thiện 100%: Zero-Footprint In-Memory Audio, Wav2Vec2 Scorer, Phoneme CTC, Llama 3.1 8B Ollama Adapter, Edge-TTS British RP
+- [x] Pytest tích hợp AI Engine Pass 100% (2/2 tests green, latency < 1500ms SLA)
+- [x] Full-Stack Regression Vitest Pass 100% (91/91 tests green) & TypeScript Strict Typecheck 0 lỗi
+
 ## [>] Vòng Lặp Tiếp Theo: [Giai Đoạn Phát Hành - Final Release & Hardening]
 
 ## [ ] Giai Đoạn Phát Hành (Final Release)
