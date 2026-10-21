@@ -190,6 +190,40 @@ export function IpaBreakdownCard() {
         </div>
       </div>
 
+      {/* AI Speaking Tutor Feedback & Articulatory Tips */}
+      {assessment?.feedback && (
+        <div className="flex flex-col gap-2.5 rounded-xl bg-surface-raised p-4 border border-primary/30">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🤖</span>
+            <span className="text-xs font-bold text-primary uppercase tracking-wide">
+              Chỉ Dẫn Từ Gia Sư AI (Llama 3.1 8B)
+            </span>
+          </div>
+
+          <div className="rounded-lg bg-canvas/80 p-2.5 text-xs text-ink leading-relaxed border border-border-subtle/50">
+            <strong className="text-primary block mb-0.5">Nhận xét tổng thể:</strong>
+            {assessment.feedback.summaryVi}
+          </div>
+
+          {assessment.feedback.tipsVi && assessment.feedback.tipsVi.length > 0 && (
+            <div className="flex flex-col gap-1.5 mt-1">
+              <span className="text-[10px] font-semibold text-ink-muted uppercase">
+                Mẹo cấu âm & đặt vị trí lưỡi:
+              </span>
+              {assessment.feedback.tipsVi.map((tip, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-start gap-2 p-2 rounded-lg bg-primary/10 border border-primary/20 text-xs text-ink leading-relaxed"
+                >
+                  <span className="text-primary mt-0.5">💡</span>
+                  <span>{tip}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 4. Formant Acoustic Radar Comparison (Acoustic Formants F1 vs F2) */}
       <div className="flex flex-col gap-2 rounded-xl bg-canvas p-3 border border-border-subtle/60 text-xs">
         <div className="flex items-center justify-between">

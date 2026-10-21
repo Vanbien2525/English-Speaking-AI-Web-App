@@ -95,7 +95,7 @@ async def assess_pronunciation(
 
     target_text = (meta.targetText.strip() if meta and meta.targetText else "I think the three thieves fled")
 
-    # 3. Phoneme CTC Recognition & Alignment (Phase 2)
+    # 3. Phoneme CTC Recognition & Acoustic Alignment (Phase 2)
     recognized_tokens = phoneme_service.recognize_phonemes(wav)
     words, accuracy_bp, completeness_bp = phoneme_service.build_word_and_phoneme_breakdown(
         target_text=target_text,
@@ -116,11 +116,41 @@ async def assess_pronunciation(
 
     # Weighted composite overall score: 50% accuracy + 35% completeness + 15% fluency
     overall_bp = int(round(0.50 * accuracy_bp + 0.35 * completeness_bp + 0.15 * fluency_bp))
+
+    # CRITICAL GATING RULES:
+    # Rule 1: Silence / Inaudible utterance check
+    if completeness_bp == 0 or accuracy_bp == 0:
+        overall_bp = 0
+        fluency_bp = 0
+        prosodic_bp = 0
+    else:
+        # Rule 2: If phonemic accuracy is poor (< 8000), overall score cannot exceed accuracy
+        if accuracy_bp < 8000:
+            overall_bp = min(overall_bp, accuracy_bp)
+
+        # Rule 3: If there is any major articulatory error (e.g. vowel elongation /uː/ instead of /ʊ/,
+        # substituted or omitted phonemes), strictly cap overall score at 6500 (65%) so attempt cannot pass (< 80%)
+        has_major_error = any(
+            any(p.severity == "major" for p in w.phonemes)
+            for w in words
+        )
+        if has_major_error:
+            overall_bp = min(overall_bp, 6500)
+
     overall_bp = max(0, min(10000, overall_bp))
 
     # Identify recognized text label
     if completeness_bp < 4000 and duration_ms < 1800:
         recognized_text = "hello" if duration_ms < 1400 else target_text.split()[0]
+    elif any(any(p.severity == "major" for p in w.phonemes) for w in words):
+        # Indicate erroneous phoneme in recognition label for clarity
+        err_phones = [
+            f"{p.expectedIpa}→{p.actualIpa or 'Ø'}"
+            for w in words
+            for p in w.phonemes
+            if p.severity == "major"
+        ]
+        recognized_text = f"{target_text} ({', '.join(err_phones[:2])})" if err_phones else target_text
     else:
         recognized_text = target_text
 

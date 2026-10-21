@@ -1,6 +1,7 @@
 """
 Zero-Footprint In-Memory Audio Processor.
 Decodes, normalizes, and resamples incoming audio (WAV, WebM, OGG, MP3) in RAM without writing to disk.
+Protects silence and low-noise floors against artificial amplification.
 """
 import io
 import math
@@ -67,10 +68,15 @@ def decode_audio_in_memory(audio_bytes: bytes, target_sr: int = 16000) -> tuple[
             logger.error(f"Failed to decode audio in memory via PyAV: {av_err}")
             raise ValueError(f"All in-memory audio decoders failed: {av_err}")
 
-    # Standardize amplitude (mean 0, unit variance with epsilon protection)
-    std = data.std()
-    if std > 1e-7:
-        normalized = ((data - data.mean()) / (std + 1e-7)).astype(np.float32)
+    # Standardize amplitude without destroying natural dynamic range
+    # Protect quiet/silence audio: NEVER amplify noise floor to unit variance
+    max_val = float(np.max(np.abs(data))) if len(data) > 0 else 0.0
+    if max_val < 0.015:
+        # True silence, mute, or inaudible whispering: keep raw levels
+        normalized = data.astype(np.float32)
+    elif max_val > 1.0:
+        # Prevent clipping distortion
+        normalized = (data / max_val).astype(np.float32)
     else:
         normalized = data.astype(np.float32)
 

@@ -48,7 +48,7 @@ class LlamaTutorService:
         # Try Ollama endpoint only if service port is reachable and not in automated tests
         import os
         if not os.getenv("PYTEST_CURRENT_TEST") and is_service_reachable(self.ollama_url, timeout=0.05):
-            ollama_feedback = await self._call_ollama(recognized_text, errors, overall_score_bp)
+            ollama_feedback = await self._call_ollama(recognized_text, errors, overall_score_bp, words)
             if ollama_feedback:
                 return ollama_feedback
 
@@ -60,17 +60,19 @@ class LlamaTutorService:
         recognized_text: str,
         errors: list[dict],
         overall_score_bp: int,
+        words: list[WordResult],
     ) -> Optional[TutorFeedback]:
         """Send prompt to local Ollama API with strict timeout shield."""
         import asyncio
         try:
             prompt = (
-                f"Câu người học phát âm: \"{recognized_text}\"\n"
+                "Bạn là Gia Sư Phát Âm AI chuyên sâu về ngữ âm tiếng Anh chuẩn British RP.\n"
+                f"Từ/câu mục tiêu: \"{recognized_text}\"\n"
                 f"Điểm số tổng thể: {overall_score_bp / 100:.1f}%\n"
                 f"Danh sách lỗi âm vị phát hiện: {json.dumps(errors, ensure_ascii=False)}\n\n"
                 "Hãy phân tích lỗi và trả về DUY NHẤT một đối tượng JSON hợp lệ gồm 2 trường:\n"
-                "- summaryVi: (chuỗi nhận xét ngắn gọn tổng thể bằng tiếng Việt)\n"
-                "- tipsVi: (mảng tối đa 3 chuỗi hướng dẫn cụ thể cách đặt vị trí môi, răng, lưỡi để sửa lỗi)\n"
+                "- summaryVi: (chuỗi nhận xét ngắn gọn, chỉ thẳng vào âm vị đọc sai nếu có, hoặc khen ngợi nếu tròn vành rõ chữ)\n"
+                "- tipsVi: (mảng 1 đến 3 chuỗi chỉ dẫn khẩu hình giải phẫu: vị trí môi, đầu lưỡi, độ mở miệng để người học sửa lỗi ngay)\n"
             )
 
             async def _req():
@@ -86,7 +88,7 @@ class LlamaTutorService:
                             "options": {
                                 "temperature": 0.2,
                                 "num_ctx": 1024,
-                                "num_predict": 100,
+                                "num_predict": 120,
                             },
                         },
                     )
@@ -96,14 +98,16 @@ class LlamaTutorService:
                 data = res.json()
                 response_text = data.get("response", "{}")
                 parsed = json.loads(response_text)
-                summary_vi = parsed.get("summaryVi", "Phát âm tương đối tốt.")
-                tips_vi = parsed.get("tipsVi", [])[:5]
-                visemes = self._generate_viseme_timeline(words)
-                return TutorFeedback(
-                    summaryVi=summary_vi,
-                    tipsVi=tips_vi,
-                    visemeTimeline=visemes,
-                )
+                summary_vi = parsed.get("summaryVi")
+                tips_vi = parsed.get("tipsVi", [])
+
+                if summary_vi and isinstance(tips_vi, list) and len(tips_vi) > 0:
+                    visemes = self._generate_viseme_timeline(words)
+                    return TutorFeedback(
+                        summaryVi=summary_vi,
+                        tipsVi=tips_vi[:5],
+                        visemeTimeline=visemes,
+                    )
         except Exception as e:
             logger.debug(f"Ollama call skipped or unavailable ({e}). Using expert rule-based pedagogy.")
 
@@ -141,26 +145,26 @@ class LlamaTutorService:
         words: list[WordResult],
         errors: list[dict],
     ) -> TutorFeedback:
-        """Rule-based Vietnamese pronunciation pedagogy for English learners."""
+        """Academic Vietnamese pronunciation pedagogy for English learners."""
         visemes = self._generate_viseme_timeline(words)
 
         deletions = [err for err in errors if err.get("errorType") == "deletion"]
-        if len(deletions) >= 3:
+        if len(deletions) >= 3 or (len(words) == 1 and len(deletions) == len(words[0].phonemes)):
             return TutorFeedback(
-                summaryVi=f"Cảnh báo: Bạn chỉ phát âm từ rất ngắn hoặc nói từ khác thay vì đọc trọn vẹn câu: '{recognized_text}'. Đa số từ trong câu đã bị bỏ sót.",
+                summaryVi=f"Cảnh báo: Bạn chưa phát âm hoặc âm lượng mic quá nhỏ để nhận diện từ: '{recognized_text}'.",
                 tipsVi=[
-                    f"Hãy đọc to rõ ràng toàn bộ câu tiếng Anh theo mẫu: '{recognized_text}'.",
-                    "Đặt đầu lưỡi kẹp nhẹ giữa hai hàm răng để tạo âm xát vô thanh /θ/ cho các từ 'think', 'three', 'thieves'.",
+                    f"Hãy đọc to rõ ràng từ mục tiêu theo mẫu: '{recognized_text}'.",
+                    "Đưa micro gần miệng hơn và kiểm tra quyền truy cập microphone của trình duyệt.",
                 ],
                 visemeTimeline=visemes,
             )
 
         if not errors:
             return TutorFeedback(
-                summaryVi=f"Phát âm câu \"{recognized_text}\" rất chuẩn xác, ngữ điệu tự nhiên và tròn vành rõ chữ.",
+                summaryVi=f"Phát âm từ \"{recognized_text}\" rất chuẩn xác, khẩu hình đẹp và tròn vành rõ chữ.",
                 tipsVi=[
-                    "Duy trì khẩu hình ổn định và mở rộng khoang miệng tự nhiên khi nói câu dài.",
-                    "Chú ý nối âm nhẹ giữa các phụ âm cuối và nguyên âm tiếp theo.",
+                    "Duy trì khẩu hình ổn định và bật dứt khoát các phụ âm cuối.",
+                    "Luyện tập ghép từ này vào câu giao tiếp hoàn chỉnh để rèn luyện phản xạ.",
                 ],
                 visemeTimeline=visemes,
             )
@@ -172,21 +176,40 @@ class LlamaTutorService:
             exp = err["expected"]
             act = err["actual"]
 
-            if exp == "θ":
+            # Specific Articulatory Rules for Common Mispronunciations
+            if exp == "ʊ" and act == "uː":
+                error_descriptions.append("nguyên âm ngắn /ʊ/ bị kéo dài thành /uː/")
+                tips.append("Âm /ʊ/ là nguyên âm ngắn thả lỏng môi (~100-150ms). Tuyệt đối không chu tròn môi quá mức và không ngân dài giọng thành /uː/.")
+            elif exp == "uː" and act == "ʊ":
+                error_descriptions.append("nguyên âm dài /uː/ bị phát âm cộc lốc")
+                tips.append("Chu tròn môi về phía trước và giữ hơi căng trong khoang miệng để tạo nguyên âm dài /uː/ trọn vẹn.")
+            elif exp == "θ" and act == "s":
+                error_descriptions.append("âm kẹp răng /θ/ bị thay thế bằng âm xát rít /s/")
+                tips.append("Đặt nhẹ đầu lưỡi ở giữa hai hàm răng cửa, thổi luồng hơi nhẹ qua kẽ răng mà không rung dây thanh và không rít răng.")
+            elif exp == "θ" and act == "t":
+                error_descriptions.append("âm kẹp răng /θ/ bị thay thế bằng âm tắc /t/")
+                tips.append("Không được chạm đầu lưỡi vào nướu răng trên tạo âm /t/. Phải đưa đầu lưỡi ra giữa 2 kẽ răng để tạo âm xát êm ái.")
+            elif exp == "θ":
                 error_descriptions.append("âm răng-môi /θ/ bị thay thế hoặc phát âm chưa rõ")
                 tips.append("Đặt nhẹ đầu lưỡi ở giữa hai hàm răng cửa, thổi luồng hơi nhẹ qua kẽ răng mà không rung dây thanh.")
             elif exp == "ð":
-                error_descriptions.append("âm /ð/ chưa đủ độ rung dây thanh")
-                tips.append("Đặt đầu lưỡi giữa hai hàm răng tương tự âm /θ/ nhưng đồng thời rung nhẹ dây thanh quản.")
+                error_descriptions.append("âm /ð/ chưa đủ độ rung dây thanh quản")
+                tips.append("Đặt đầu lưỡi giữa hai hàm răng tương tự âm /θ/ nhưng đồng thời rung nhẹ dây thanh quản để tạo âm /ð/.")
             elif exp == "k":
                 error_descriptions.append("âm bật /k/ ở đuôi từ bị nuốt hoặc thay thế")
                 tips.append("Nâng cuống lưỡi chạm nhẹ vào ngạc mềm rồi bật dứt khoát luồng hơi để tạo âm đuôi /k/ rõ ràng.")
+            elif exp == "d":
+                error_descriptions.append("âm đuôi /d/ chưa được bật rõ")
+                tips.append("Chạm đầu lưỡi vào gờ nướu răng trên và bật nhẹ luồng hơi kèm rung thanh quản để phát rõ âm đuôi /d/.")
             elif exp in ["ʃ", "tʃ"]:
                 error_descriptions.append(f"âm /{exp}/ khẩu hình chưa đủ tròn môi")
                 tips.append(f"Chu tròn môi về phía trước, nâng thân lưỡi hướng về ngạc cứng khi phát âm /{exp}/.")
+            elif exp == "ɪ" and act == "iː":
+                error_descriptions.append("nguyên âm ngắn /ɪ/ bị kéo dài căng mép thành /iː/")
+                tips.append("Thả lỏng cơ hàm và khóe miệng tự nhiên cho âm /ɪ/, không căng cơ cười sang hai bên như âm /iː/.")
             else:
-                error_descriptions.append(f"âm /{exp}/ bị lệch sang /{act}/")
-                tips.append(f"Luyện tập tách riêng âm /{exp}/, chú ý cảm nhận luồng hơi và vị trí lưỡi theo mô hình 3D.")
+                error_descriptions.append(f"âm /{exp}/ bị lệch sang /{act or 'bỏ sót'}/")
+                tips.append(f"Luyện tập riêng âm /{exp}/: quan sát mô hình khoang miệng 3D và chú ý vị trí đặt lưỡi.")
 
         # Deduplicate tips
         seen_tips = []
@@ -194,7 +217,7 @@ class LlamaTutorService:
             if t not in seen_tips:
                 seen_tips.append(t)
 
-        summary = f"Phát âm tương đối tốt, tuy nhiên {', '.join(error_descriptions[:2])}."
+        summary = f"Chưa đạt chuẩn: {', '.join(error_descriptions[:2])}. Cần điều chỉnh khẩu hình."
         return TutorFeedback(
             summaryVi=summary,
             tipsVi=seen_tips[:5],

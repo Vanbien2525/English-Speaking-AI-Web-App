@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import type { ReviewLevel } from "@/core/dto/vocabulary.dto";
+import type { PronunciationAssessment } from "@/core/dto/shared.dto";
 import { useVocabularyStore } from "../stores/useVocabularyStore";
 import { useVocabularyAudioRecorder } from "../hooks/useVocabularyAudioRecorder";
 import { VocabWaveform } from "./VocabWaveform";
@@ -40,6 +41,7 @@ export function FlashcardReviewDeck() {
   const [assessedCardId, setAssessedCardId] = useState<string | null>(null);
   const [rawScoreBp, setRawScoreBp] = useState<number | null>(null);
   const [lastAudioDurationMs, setLastAudioDurationMs] = useState<number>(1200);
+  const [latestAssessment, setLatestAssessment] = useState<PronunciationAssessment | null>(null);
 
   const {
     isRecording,
@@ -48,6 +50,8 @@ export function FlashcardReviewDeck() {
     startRecording,
     stopAndAssess,
   } = useVocabularyAudioRecorder();
+
+
 
   const currentItem = dueItems[currentCardIndex];
   const lastAssessedScoreBp = assessedCardId === currentItem?.id ? rawScoreBp : null;
@@ -121,6 +125,9 @@ export function FlashcardReviewDeck() {
         setAssessedCardId(currentItem.id);
         setRawScoreBp(assessResult.pronunciationScoreBp);
         setLastAudioDurationMs(assessResult.durationMs);
+        if (assessResult.assessment) {
+          setLatestAssessment(assessResult.assessment);
+        }
 
         // Submit default review
         const reviewResult = await submitSpeakingReview({
@@ -415,6 +422,84 @@ export function FlashcardReviewDeck() {
             <div className="mt-1 text-[11px] opacity-80">
               Điểm số: {scorePercent}/100 · Chu kỳ SM-2 mới: {lastReviewResult.intervalDaysAfter} ngày
             </div>
+          </div>
+        )}
+
+        {/* AI Tutor Diagnostic & Articulatory Tips Breakdown */}
+        {latestAssessment && assessedCardId === currentItem.id && (
+          <div className="w-full flex flex-col gap-3 p-4 rounded-xl border border-primary/30 bg-surface-raised shadow-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🤖</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-primary">
+                  Chẩn Đoán Âm Vị & Gợi Ý Sửa Lỗi (Llama 3.1 8B)
+                </span>
+              </div>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-surface border border-border-subtle text-ink">
+                Độ chính xác: {Math.round(latestAssessment.accuracyBp / 100)}%
+              </span>
+            </div>
+
+            {/* Phoneme Breakdown Chips */}
+            {latestAssessment.words?.[0]?.phonemes && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] text-ink-muted">Chi tiết từng âm vị:</span>
+                <div className="flex flex-wrap gap-2">
+                  {latestAssessment.words[0].phonemes.map((p, idx) => {
+                    const isCorrect = p.errorType === "correct" && p.severity === "good";
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex flex-col items-center px-3 py-1.5 rounded-lg border text-xs font-medium ${
+                          isCorrect
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                            : "bg-coral-500/15 border-coral-500/50 text-coral-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1 font-bold ipa text-sm">
+                          <span>/{p.expectedIpa}/</span>
+                          {!isCorrect && (
+                            <>
+                              <span>→</span>
+                              <span className="underline decoration-coral-400">/{p.actualIpa || "Ø"}/</span>
+                            </>
+                          )}
+                        </div>
+                        <span className="text-[10px] opacity-80 mt-0.5">
+                          {isCorrect ? "✓ Chuẩn" : p.errorType === "deletion" ? "Nuốt âm" : "Lệch âm"} ({Math.round(p.gopScoreBp / 100)}%)
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* AI Tutor Summary */}
+            <div className="p-3 rounded-lg bg-surface border border-border-subtle text-xs text-ink leading-relaxed">
+              <strong className="text-primary block mb-0.5">Nhận xét của gia sư:</strong>
+              {latestAssessment.feedback.summaryVi}
+            </div>
+
+            {/* Specific Articulatory Tips */}
+            {latestAssessment.feedback.tipsVi && latestAssessment.feedback.tipsVi.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-semibold text-ink-muted uppercase">
+                  Mẹo đặt khẩu hình & vị trí lưỡi:
+                </span>
+                <div className="flex flex-col gap-1.5">
+                  {latestAssessment.feedback.tipsVi.map((tip, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-start gap-2 p-2 rounded-lg bg-primary/10 border border-primary/20 text-xs text-ink leading-relaxed"
+                    >
+                      <span className="text-primary mt-0.5">💡</span>
+                      <span>{tip}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

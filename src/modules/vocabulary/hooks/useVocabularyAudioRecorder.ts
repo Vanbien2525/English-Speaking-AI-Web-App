@@ -10,6 +10,7 @@ export interface AudioAssessmentOutput {
   durationMs: number;
   isPassed: boolean;
   recognizedText?: string;
+  assessment?: PronunciationAssessment;
 }
 
 export function useVocabularyAudioRecorder() {
@@ -155,6 +156,7 @@ export function useVocabularyAudioRecorder() {
                 durationMs,
                 isPassed,
                 recognizedText: data.recognizedText,
+                assessment: data,
               });
               return;
             }
