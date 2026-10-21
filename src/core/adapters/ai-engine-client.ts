@@ -70,6 +70,94 @@ export class MockAiEngineClient implements AiEngineClient {
       throw abortError;
     }
 
+    const target = meta.targetText || "I think the three thieves fled";
+    const isTooShort = target.split(/\s+/).length > 2 && meta.audioDurationMs < 1800;
+
+    if (isTooShort) {
+      return {
+        engine: "local_whisperx_wav2vec2",
+        engineVersion: "whisperx-3.1.1+wav2vec2-large-xlsr-53",
+        recognizedText: "hello",
+        overallScoreBp: 2200,
+        accuracyBp: 2500,
+        fluencyBp: 3000,
+        completenessBp: 1600,
+        prosodyBp: 2000,
+        scoringLatencyMs: 145,
+        words: [
+          {
+            word: "think",
+            accuracyBp: 2500,
+            startMs: 200,
+            endMs: 700,
+            phonemes: [
+              {
+                position: 0,
+                expectedIpa: "θ",
+                actualIpa: "h",
+                errorType: "substitution",
+                severity: "major",
+                gopScoreBp: 2000,
+                startMs: 200,
+                endMs: 350,
+              },
+              {
+                position: 1,
+                expectedIpa: "ɪ",
+                actualIpa: "e",
+                errorType: "substitution",
+                severity: "major",
+                gopScoreBp: 2500,
+                startMs: 350,
+                endMs: 500,
+              },
+              {
+                position: 2,
+                expectedIpa: "ŋ",
+                actualIpa: null,
+                errorType: "deletion",
+                severity: "major",
+                gopScoreBp: 1000,
+                startMs: null,
+                endMs: null,
+              },
+              {
+                position: 3,
+                expectedIpa: "k",
+                actualIpa: null,
+                errorType: "deletion",
+                severity: "major",
+                gopScoreBp: 1000,
+                startMs: null,
+                endMs: null,
+              },
+            ],
+          },
+        ],
+        feedback: {
+          summaryVi:
+            "Cảnh báo: Bạn chỉ phát âm từ rất ngắn hoặc khác ('hello') thay vì đọc cả câu mẫu. Đa số âm vị bị thiếu hoặc sai lệch nghiêm trọng.",
+          tipsVi: [
+            "Hãy đọc to rõ trọn vẹn cả câu theo yêu cầu bài học.",
+            "Đầu lưỡi đặt giữa hai hàm răng để tạo âm xát vô thanh /θ/ cho từ 'think'.",
+          ],
+          visemeTimeline: [
+            {
+              ipa: "θ",
+              startMs: 200,
+              transitionMs: 50,
+              holdMs: 100,
+              morphWeights: {
+                jawOpen: 200,
+                tongueInterdental: 950,
+              },
+              highlightParts: ["tongue", "upper_teeth"],
+            },
+          ],
+        },
+      };
+    }
+
     return {
       engine: "local_whisperx_wav2vec2",
       engineVersion: "whisperx-3.1.1+wav2vec2-large-xlsr-53",

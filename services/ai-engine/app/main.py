@@ -21,36 +21,48 @@ logger = logging.getLogger("ai_speaking_tutor")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle hook for model warmup and resource cleanup."""
+    import os
     logger.info("Initializing AI Speaking Tutor Engine...")
     logger.info(f"Target Model Directory: {settings.model_dir}")
     logger.info(f"Ollama Target URL: {settings.ollama_url}")
 
-    # Warm up Ollama in background so first user request doesn't suffer cold start
-    import asyncio
-    async def _warmup_ollama():
-        try:
-            from app.services.net_utils import is_service_reachable
-            import httpx
-            if is_service_reachable(settings.ollama_url, timeout=0.1):
-                logger.info(f"Pre-warming Ollama model '{settings.ollama_model}'...")
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    await client.post(
-                        f"{settings.ollama_url}/api/generate",
-                        json={
-                            "model": settings.ollama_model,
-                            "prompt": "hi",
-                            "stream": False,
-                            "options": {"num_predict": 1},
-                        },
-                    )
-                logger.info("Ollama model successfully pre-warmed in memory.")
-        except Exception as e:
-            logger.warning(f"Ollama warmup skipped: {e}")
+    warmup_task = None
+    # Skip heavy Ollama warmup during automated pytest runs
+    if not os.getenv("PYTEST_CURRENT_TEST"):
+        import asyncio
+        async def _warmup_ollama():
+            try:
+                from app.services.net_utils import is_service_reachable
+                import httpx
+                reachable = await asyncio.to_thread(is_service_reachable, settings.ollama_url, 0.1)
+                if reachable:
+                    logger.info(f"Pre-warming Ollama model '{settings.ollama_model}'...")
+                    async with httpx.AsyncClient(timeout=15.0) as client:
+                        await client.post(
+                            f"{settings.ollama_url}/api/generate",
+                            json={
+                                "model": settings.ollama_model,
+                                "prompt": "hi",
+                                "stream": False,
+                                "options": {"num_predict": 1},
+                            },
+                        )
+                    logger.info("Ollama model successfully pre-warmed in memory.")
+            except Exception as e:
+                logger.warning(f"Ollama warmup skipped: {e}")
 
-    asyncio.create_task(_warmup_ollama())
+        warmup_task = asyncio.create_task(_warmup_ollama())
 
-    yield
-    logger.info("Shutting down AI Speaking Tutor Engine.")
+    try:
+        yield
+    finally:
+        if warmup_task and not warmup_task.done():
+            warmup_task.cancel()
+            try:
+                await warmup_task
+            except asyncio.CancelledError:
+                pass
+        logger.info("Shutting down AI Speaking Tutor Engine.")
 
 
 app = FastAPI(

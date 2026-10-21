@@ -40,6 +40,7 @@ export function AudioRecordDock() {
         idempotencyKey: crypto.randomUUID(),
         audioDurationMs: Math.max(500, Math.min(15000, duration)),
         accent: "en-GB-RP",
+        targetText: lesson.targetPhrase,
       };
 
       const formData = new FormData();

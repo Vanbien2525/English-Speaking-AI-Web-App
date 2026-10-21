@@ -73,6 +73,14 @@ export function setAssessmentDependencies(deps: Partial<AssessmentDependencies>)
 }
 
 export function getAssessmentDependencies(): AssessmentDependencies {
+  if (
+    process.env.NODE_ENV !== "test" &&
+    (process.env.USE_REAL_AI_ENGINE === "true" || process.env.AI_ENGINE_PROVIDER === "local")
+  ) {
+    if (!(globalDeps.aiClient instanceof FastApiAiEngineClient)) {
+      globalDeps.aiClient = new FastApiAiEngineClient(process.env.AI_ENGINE_URL ?? "http://127.0.0.1:8000");
+    }
+  }
   return globalDeps;
 }
 

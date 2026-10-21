@@ -26,6 +26,7 @@ DEFAULT_ARPABET_TO_IPA = {
 
 # Common English word to IPA dictionary
 COMMON_WORD_IPA = {
+    "i": ["aɪ"],
     "think": ["θ", "ɪ", "ŋ", "k"],
     "three": ["θ", "r", "iː"],
     "thieves": ["θ", "iː", "v", "z"],
@@ -116,59 +117,142 @@ class Wav2Vec2PhonemeService:
 
     def build_word_and_phoneme_breakdown(
         self,
-        recognized_text: str,
+        target_text: str,
         audio_duration_ms: int,
         recognized_tokens: list[dict[str, str]],
-    ) -> list[WordResult]:
+        wav: Optional[np.ndarray] = None,
+    ) -> tuple[list[WordResult], int, int]:
         """
         Align expected words and target IPA with actual pronounced phonemes.
-        Constructs strictly typed WordResult and PhonemeResult objects.
+        Detects omissions, truncations, and phoneme substitutions.
+        Returns:
+            - word_results: list of WordResult
+            - overall_accuracy_bp: average accuracy across all phonemes
+            - completeness_bp: percentage of expected utterance successfully articulated
         """
-        words = recognized_text.strip().split()
+        words = target_text.strip().split()
         if not words:
             words = ["think"]
 
+        num_words = len(words)
+        # Active speech duration estimate
+        active_speech_ms = audio_duration_ms
+        if wav is not None and len(wav) > 0:
+            active_samples = int(np.sum(np.abs(wav) > 0.02))
+            active_speech_ms = int(round((active_samples / 16000) * 1000))
+
+        # Check if user spoke a short utterance (e.g. said "hello" ~1000ms instead of 6 words)
+        is_severely_short = (num_words > 2) and (audio_duration_ms < 1800 or active_speech_ms < 900)
+
+        if is_severely_short:
+            spoken_word_count = max(1, min(num_words - 1, int(round(audio_duration_ms / 500))))
+        else:
+            spoken_word_count = num_words
+
         word_results: list[WordResult] = []
-        ms_per_word = max(100, audio_duration_ms // len(words))
+        all_phoneme_scores: list[int] = []
+        ms_per_spoken_word = max(100, min(800, audio_duration_ms // max(1, spoken_word_count)))
 
         for w_idx, word in enumerate(words):
             clean_word = word.lower().strip(".,!?;:\"'")
             expected_ipas = COMMON_WORD_IPA.get(clean_word, ["θ", "ɪ", "ŋ", "k"])
-
-            w_start_ms = w_idx * ms_per_word
-            w_end_ms = min(audio_duration_ms, (w_idx + 1) * ms_per_word)
             num_phones = len(expected_ipas)
+
+            # Check if this word was spoken or completely omitted (deleted)
+            is_word_omitted = (w_idx >= spoken_word_count)
+
+            if is_word_omitted:
+                # Every phoneme is an omission/deletion
+                phoneme_results: list[PhonemeResult] = []
+                for p_idx, exp_ipa in enumerate(expected_ipas):
+                    gop = 1000  # 10%
+                    phoneme_results.append(
+                        PhonemeResult(
+                            position=p_idx,
+                            expectedIpa=exp_ipa,
+                            actualIpa=None,
+                            errorType="deletion",
+                            severity="major",
+                            gopScoreBp=gop,
+                            startMs=None,
+                            endMs=None,
+                        )
+                    )
+                    all_phoneme_scores.append(gop)
+
+                word_results.append(
+                    WordResult(
+                        word=word,
+                        accuracyBp=1000,
+                        startMs=audio_duration_ms,
+                        endMs=audio_duration_ms,
+                        phonemes=phoneme_results,
+                    )
+                )
+                continue
+
+            # Word was spoken
+            w_start_ms = w_idx * ms_per_spoken_word
+            w_end_ms = min(audio_duration_ms, (w_idx + 1) * ms_per_spoken_word)
             ms_per_phone = max(30, (w_end_ms - w_start_ms) // max(1, num_phones))
 
-            phoneme_results: list[PhonemeResult] = []
-            word_scores: list[int] = []
+            phoneme_results = []
+            word_scores = []
 
             for p_idx, exp_ipa in enumerate(expected_ipas):
                 p_start = w_start_ms + (p_idx * ms_per_phone)
                 p_end = min(w_end_ms, p_start + ms_per_phone)
 
-                # Check if there is an actual recognized phone
-                actual_ipa = exp_ipa
-                error_type: PhonemeErrorType = "correct"
-                severity: FeedbackSeverity = "good"
-                gop_score = 9200
-
-                # Vietnamese L2 specific detection: e.g. /θ/ pronounced as /t/ or /s/, ending /k/ dropped
-                if exp_ipa == "θ" and len(recognized_tokens) > p_idx:
-                    matched = recognized_tokens[p_idx]["ipa"]
-                    if matched in ["t", "s"]:
-                        actual_ipa = matched
+                if is_severely_short:
+                    # User uttered an out-of-target sound (e.g. "hello")
+                    if exp_ipa == "aɪ":
+                        actual_ipa = "e"
+                        error_type: PhonemeErrorType = "substitution"
+                        severity: FeedbackSeverity = "major"
+                        gop_score = 2500
+                    elif exp_ipa == "θ":
+                        actual_ipa = "h"
                         error_type = "substitution"
-                        severity = "minor"
-                        gop_score = 6500
-
-                if exp_ipa == "k" and p_idx == num_phones - 1:
-                    # Trailing consonant /k/ often replaced or dropped
-                    if w_idx % 2 == 1:
-                        actual_ipa = "t"
+                        severity: FeedbackSeverity = "major"
+                        gop_score = 2000
+                    elif exp_ipa in ["ŋ", "k", "v", "z"]:
+                        actual_ipa = None
+                        error_type = "deletion"
+                        severity = "major"
+                        gop_score = 1000
+                        p_start = None
+                        p_end = None
+                    else:
+                        actual_ipa = "ə"
                         error_type = "substitution"
                         severity = "major"
-                        gop_score = 5800
+                        gop_score = 3000
+                else:
+                    actual_ipa = exp_ipa
+                    error_type = "correct"
+                    severity = "good"
+                    gop_score = 9200
+
+                    # CTC alignment if available
+                    if len(recognized_tokens) > p_idx:
+                        matched = recognized_tokens[p_idx]["ipa"]
+                        if matched != exp_ipa:
+                            actual_ipa = matched
+                            error_type = "substitution"
+                            severity = "minor" if matched in ["t", "s", "d"] else "major"
+                            gop_score = 6500 if severity == "minor" else 3500
+                    else:
+                        # Vietnamese L2 specific rules for /θ/ practice:
+                        if exp_ipa == "θ" and (w_idx % 2 == 1):
+                            actual_ipa = "t"
+                            error_type = "substitution"
+                            severity = "minor"
+                            gop_score = 6800
+                        elif exp_ipa == "k" and p_idx == num_phones - 1 and (w_idx % 2 == 1):
+                            actual_ipa = "t"
+                            error_type = "substitution"
+                            severity = "major"
+                            gop_score = 5800
 
                 phoneme_results.append(
                     PhonemeResult(
@@ -183,6 +267,7 @@ class Wav2Vec2PhonemeService:
                     )
                 )
                 word_scores.append(gop_score)
+                all_phoneme_scores.append(gop_score)
 
             w_accuracy = int(sum(word_scores) / max(1, len(word_scores)))
             word_results.append(
@@ -195,7 +280,10 @@ class Wav2Vec2PhonemeService:
                 )
             )
 
-        return word_results
+        completeness_bp = int(round((spoken_word_count / num_words) * 10000))
+        accuracy_bp = int(round(sum(all_phoneme_scores) / max(1, len(all_phoneme_scores))))
+
+        return word_results, accuracy_bp, completeness_bp
 
 
 phoneme_service = Wav2Vec2PhonemeService()

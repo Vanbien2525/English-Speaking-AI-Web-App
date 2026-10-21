@@ -55,12 +55,20 @@ class Settings(BaseSettings):
 
     def get_effective_model_path(self, subdir: str) -> Optional[Path]:
         """Check primary (Google Drive) and fallback (local models/) directories."""
-        primary = Path(self.model_dir) / subdir
-        if primary.exists():
-            return primary
-        fallback = Path(self.fallback_local_model_dir) / subdir
-        if fallback.exists():
-            return fallback
+        try:
+            primary = Path(self.model_dir) / subdir
+            if primary.exists():
+                return primary
+        except (PermissionError, OSError):
+            pass
+
+        try:
+            fallback = Path(self.fallback_local_model_dir) / subdir
+            if fallback.exists():
+                return fallback
+        except (PermissionError, OSError):
+            pass
+
         return None
 
 

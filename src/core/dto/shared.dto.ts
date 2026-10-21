@@ -107,6 +107,7 @@ export const CreateAttemptMetaSchema = z.object({
   idempotencyKey: z.uuid(),
   audioDurationMs: z.int().min(1).max(60_000),
   accent: AccentCodeSchema,
+  targetText: z.string().optional(),
 });
 
 // -----------------------------------------------------------------------------

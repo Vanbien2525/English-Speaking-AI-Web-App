@@ -31,8 +31,7 @@ def create_dummy_wav_bytes(duration_s: float = 1.0, sr: int = 16000) -> bytes:
 
 @pytest.fixture
 def client():
-    with TestClient(app) as test_client:
-        yield test_client
+    return TestClient(app, raise_server_exceptions=True)
 
 
 def test_health_endpoint(client):
@@ -83,3 +82,39 @@ def test_assess_endpoint_with_in_memory_audio(client):
     assert "startMs" in first_viseme
     assert "morphWeights" in first_viseme
     assert "highlightParts" in first_viseme
+
+
+def test_short_mismatched_utterance_receives_low_score(client):
+    """Speaking 'hello' (short utterance) when expected is a full sentence MUST drop completeness & overall score."""
+    audio_bytes = create_dummy_wav_bytes(duration_s=0.9)
+    meta = {
+        "sessionId": "018f4a7c-87d0-7a32-9c10-234567890abc",
+        "lessonItemId": "018f4a7c-87d0-7a32-9c10-234567890def",
+        "idempotencyKey": "018f4a7c-87d0-7a32-9c10-234567890bbb",
+        "audioDurationMs": 900,
+        "accent": "en-GB-RP",
+        "targetText": "I think the three thieves fled",
+    }
+
+    response = client.post(
+        "/api/v1/assess",
+        files={"audio": ("sample.wav", audio_bytes, "audio/wav")},
+        data={"metadata": json.dumps(meta)},
+    )
+
+    assert response.status_code == 200
+    result = response.json()
+
+    # Overall score and completeness must drop significantly (< 4000 bp / 40%)
+    assert result["completenessBp"] < 4000
+    assert result["overallScoreBp"] < 4000
+    assert "Cảnh báo" in result["feedback"]["summaryVi"]
+
+    # Verify that omitted words have phonemes marked as deletion
+    words = result["words"]
+    omitted_words = words[2:]
+    for w in omitted_words:
+        assert w["accuracyBp"] <= 2000
+        for p in w["phonemes"]:
+            assert p["errorType"] == "deletion"
+            assert p["actualIpa"] is None

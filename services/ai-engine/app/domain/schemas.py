@@ -85,6 +85,7 @@ class CreateAttemptMeta(BaseModel):
     idempotencyKey: str
     audioDurationMs: int = Field(ge=1, le=60000)
     accent: AccentCode = "en-GB-RP"
+    targetText: Optional[str] = None
 
 
 class TtsRequest(BaseModel):
