@@ -16,6 +16,233 @@ from app.services.net_utils import is_service_reachable
 logger = logging.getLogger(__name__)
 
 
+# Comprehensive Anatomy & Articulation Knowledge Base for all 44 IPA Phonemes
+ARTICULATORY_GUIDES: dict[str, dict[str, str]] = {
+    # 24 Consonants
+    "p": {
+        "lips": "Mím chặt hai môi lại nén luồng khí trong miệng",
+        "tongue": "Đầu lưỡi thả lỏng tự nhiên ở đáy miệng",
+        "breath": "Bật mở nhanh hai môi giải phóng luồng hơi nổ sắc nét, không rung thanh quản",
+    },
+    "b": {
+        "lips": "Mím chặt hai môi lại tương tự âm /p/",
+        "tongue": "Đầu lưỡi thả lỏng tự nhiên",
+        "breath": "Bật mở môi đồng thời làm rung mạnh dây thanh quản ở cổ họng",
+    },
+    "t": {
+        "lips": "Môi và khóe miệng mở tự nhiên",
+        "tongue": "Áp chặt đầu lưỡi vào phần gờ nướu ngay phía sau hàm răng trên",
+        "breath": "Bật mạnh đầu lưỡi xuống giải phóng luồng hơi nổ dứt khoát, không rung cổ họng",
+    },
+    "d": {
+        "lips": "Môi mở tự nhiên",
+        "tongue": "Áp đầu lưỡi vào gờ nướu răng trên tương tự âm /t/",
+        "breath": "Bật đầu lưỡi xuống kết hợp làm rung mạnh dây thanh quản tạo âm trầm",
+    },
+    "k": {
+        "lips": "Miệng mở tự nhiên theo nguyên âm đi kèm",
+        "tongue": "Nâng phần cuống lưỡi ép chặt vào ngạc mềm ở vòm họng trên để chặn luồng khí",
+        "breath": "Hạ nhanh cuống lưỡi xuống để luồng hơi nén bật mạnh ra ngoài ('kh'), không rung cổ họng",
+    },
+    "g": {
+        "lips": "Miệng mở tự nhiên",
+        "tongue": "Nâng cuống lưỡi ép chặt ngạc mềm như âm /k/",
+        "breath": "Hạ cuống lưỡi đồng thời làm rung mạnh dây thanh quản ở cổ họng",
+    },
+    "f": {
+        "lips": "Chạm nhẹ mép răng cửa trên vào phần trong của môi dưới",
+        "tongue": "Thân lưỡi thả lỏng trong khoang miệng",
+        "breath": "Đẩy luồng hơi liên tục qua khe hẹp giữa răng và môi, không rung thanh quản",
+    },
+    "v": {
+        "lips": "Răng cửa trên chạm nhẹ môi dưới tương tự âm /f/",
+        "tongue": "Thân lưỡi thả lỏng",
+        "breath": "Đẩy luồng hơi qua khe răng môi đồng thời làm rung mạnh dây thanh quản",
+    },
+    "θ": {
+        "lips": "Khóe miệng mở nhẹ, cơ mặt thả lỏng",
+        "tongue": "Đưa nhẹ đầu lưỡi ra giữa hai hàm răng cửa (kẹp nhẹ, tuyệt đối không cắn chặt)",
+        "breath": "Thổi luồng hơi êm qua khe giữa răng và lưỡi, không rít răng, không rung thanh quản",
+    },
+    "ð": {
+        "lips": "Khóe miệng mở nhẹ",
+        "tongue": "Đặt đầu lưỡi giữa hai hàm răng tương tự âm /θ/",
+        "breath": "Thổi luồng hơi qua khe răng đồng thời làm rung mạnh dây thanh quản ở cổ họng",
+    },
+    "s": {
+        "lips": "Khóe miệng hơi kéo nhẹ sang hai bên, hai hàm răng khép gần sát nhau",
+        "tongue": "Đầu lưỡi nâng cao sát gần gờ nướu trên (chừa một rãnh hẹp, không chạm răng)",
+        "breath": "Đẩy luồng hơi mạnh qua rãnh lưỡi tạo tiếng xì gió sắc nét, không rung thanh quản",
+    },
+    "z": {
+        "lips": "Khẩu hình tương tự âm /s/",
+        "tongue": "Đầu lưỡi đặt sát gờ nướu răng trên",
+        "breath": "Đẩy luồng hơi qua rãnh lưỡi đồng thời làm rung mạnh dây thanh quản ('zzz')",
+    },
+    "ʃ": {
+        "lips": "Chu tròn môi hướng về phía trước, hai khóe miệng ép nhẹ vào trong",
+        "tongue": "Nâng thân lưỡi lên sát vòm ngạc cứng tạo một khe hẹp",
+        "breath": "Đẩy luồng hơi mạnh qua khe lưỡi tạo tiếng xát 'suỵt/shhh', không rung cổ họng",
+    },
+    "ʒ": {
+        "lips": "Chu tròn môi hướng về phía trước tương tự âm /ʃ/",
+        "tongue": "Thân lưỡi nâng cao sát vòm ngạc cứng",
+        "breath": "Đẩy luồng hơi qua khe lưỡi đồng thời làm rung mạnh dây thanh quản",
+    },
+    "tʃ": {
+        "lips": "Chu tròn môi nhẹ hướng về phía trước",
+        "tongue": "Áp đầu lưỡi chặn gờ nướu trên rồi hạ nhanh lùi về sau chuyển sang âm /ʃ/",
+        "breath": "Bật luồng hơi nén ra ngoài dứt khoát tạo tiếng bật xát 'ch', không rung thanh quản",
+    },
+    "dʒ": {
+        "lips": "Chu tròn môi nhẹ",
+        "tongue": "Áp đầu lưỡi chặn gờ nướu rồi lùi về sau tương tự âm /tʃ/",
+        "breath": "Bật luồng hơi dứt khoát kết hợp làm rung mạnh dây thanh quản (như trong joy)",
+    },
+    "h": {
+        "lips": "Mở tự nhiên theo khẩu hình nguyên âm kế tiếp",
+        "tongue": "Lưỡi thả lỏng tự nhiên ở đáy miệng",
+        "breath": "Thở nhẹ một luồng hơi ấm từ sâu trong thanh môn cổ họng ra ngoài, không rung thanh quản",
+    },
+    "m": {
+        "lips": "Ngậm kín hai môi hoàn toàn",
+        "tongue": "Lưỡi thả lỏng trong khoang miệng",
+        "breath": "Hạ ngạc mềm để đẩy toàn bộ luồng khí rung qua khoang mũi tạo âm 'mmm' hữu thanh",
+    },
+    "n": {
+        "lips": "Miệng mở tự nhiên",
+        "tongue": "Áp chặt đầu lưỡi vào phần gờ nướu răng trên chặn kín luồng khí qua miệng",
+        "breath": "Đẩy toàn bộ luồng khí rung qua khoang mũi tạo âm 'nnn' hữu thanh",
+    },
+    "ŋ": {
+        "lips": "Miệng mở tự nhiên",
+        "tongue": "Nâng cuống lưỡi ép chặt vào ngạc mềm ở vòm họng trên",
+        "breath": "Đẩy luồng khí rung qua khoang mũi tạo âm 'ng' hữu thanh (như trong sing)",
+    },
+    "l": {
+        "lips": "Khóe miệng thả lỏng tự nhiên",
+        "tongue": "Áp đầu lưỡi tựa chắc chắn vào gờ nướu răng trên",
+        "breath": "Giữ nguyên đầu lưỡi, đẩy luồng hơi rung thoát tự do ra hai bên mép lưỡi",
+    },
+    "r": {
+        "lips": "Hơi chu tròn môi nhẹ",
+        "tongue": "Kéo đầu lưỡi hơi cong nhẹ về phía sau khoang miệng (tuyệt đối không chạm vòm họng)",
+        "breath": "Đẩy luồng hơi rung thoát qua thân lưỡi tạo âm uốn lưỡi tự nhiên",
+    },
+    "w": {
+        "lips": "Chu môi tròn nhỏ hướng về phía trước như đang huýt sáo",
+        "tongue": "Cuống lưỡi nâng cao về phía ngạc mềm",
+        "breath": "Mở nhanh môi kết hợp đẩy luồng hơi rung thoát ra ngoài",
+    },
+    "j": {
+        "lips": "Khóe miệng hơi kéo nhẹ sang hai bên",
+        "tongue": "Thân lưỡi nâng cao sát ngạc cứng như đang chuẩn bị phát âm /iː/",
+        "breath": "Hạ nhanh thân lưỡi lướt sang nguyên âm tiếp theo, rung dây thanh quản",
+    },
+    # 12 Monophthongs
+    "iː": {
+        "lips": "Kéo căng hai khóe miệng sang hai bên như đang cười mỉm",
+        "tongue": "Thân lưỡi nâng cao tối đa về phía vòm ngạc cứng",
+        "breath": "Ngân dài luồng hơi đều đặn khoảng 0.35s, căng cơ miệng",
+    },
+    "ɪ": {
+        "lips": "Môi mở nhẹ tự nhiên, cơ mặt và khóe miệng thả lỏng hoàn toàn",
+        "tongue": "Thân lưỡi nâng lên nhưng thấp hơn vị trí của âm /iː/",
+        "breath": "Phát âm ngắn, dứt khoát (~100ms), âm thanh hơi trầm hơn /iː/",
+    },
+    "e": {
+        "lips": "Mép môi mở rộng hơn âm /ɪ/, cơ mặt thư giãn",
+        "tongue": "Thân lưỡi nằm ở vị trí trung bình giữa vòm miệng",
+        "breath": "Phát âm dứt khoát, luồng hơi thoát ra tự nhiên",
+    },
+    "æ": {
+        "lips": "Hạ hàm dưới xuống thấp, mở rộng khoang miệng",
+        "tongue": "Đầu lưỡi chạm chân răng cửa dưới, thân lưỡi hạ thấp",
+        "breath": "Phát âm âm 'e bẹt' to, vang và dứt khoát",
+    },
+    "ɑː": {
+        "lips": "Mở rộng và tròn khoang miệng sâu",
+        "tongue": "Cuống lưỡi hạ thấp tối đa về phía đáy họng",
+        "breath": "Ngân dài âm trầm sâu từ cuống họng (~0.35s)",
+    },
+    "ʌ": {
+        "lips": "Môi mở vừa phải ở trạng thái tự nhiên, không chu môi",
+        "tongue": "Phần giữa lưỡi hơi nâng nhẹ",
+        "breath": "Bật âm ngắn gọn, dứt khoát từ cổ họng",
+    },
+    "ɒ": {
+        "lips": "Hơi tròn môi nhẹ, hạ hàm dưới xuống",
+        "tongue": "Cuống lưỡi hạ thấp ở phía sau khoang miệng",
+        "breath": "Phát âm ngắn, dứt khoát",
+    },
+    "ɔː": {
+        "lips": "Chu tròn môi rõ rệt hướng về phía trước",
+        "tongue": "Cuống lưỡi nâng nhẹ ở phía sau",
+        "breath": "Ngân dài luồng hơi tròn trịa (~0.35s)",
+    },
+    "ʊ": {
+        "lips": "Môi hơi tròn nhẹ, khóe miệng thả lỏng (không chu chặt)",
+        "tongue": "Cuống lưỡi hơi nâng nhẹ ở phía sau khoang miệng",
+        "breath": "Phát âm ngắn gọn, dứt khoát (~100ms)",
+    },
+    "uː": {
+        "lips": "Chu tròn môi tối đa hướng về phía trước như đang huýt sáo",
+        "tongue": "Cuống lưỡi nâng cao về phía ngạc mềm",
+        "breath": "Ngân dài luồng hơi đều đặn (~0.35s), căng cơ môi",
+    },
+    "ɜː": {
+        "lips": "Môi mở tự nhiên ở trạng thái trung tính",
+        "tongue": "Thân lưỡi ở vị trí trung tâm khoang miệng, đầu lưỡi hơi cong nhẹ",
+        "breath": "Ngân dài luồng hơi đều đặn từ sâu trong vòm họng",
+    },
+    "ə": {
+        "lips": "Thả lỏng hoàn toàn cơ môi và khóe miệng",
+        "tongue": "Lưỡi nằm nghỉ tự nhiên ở đáy miệng",
+        "breath": "Phát âm cực ngắn và nhẹ nhàng, lướt qua",
+    },
+    # 8 Diphthongs
+    "eɪ": {
+        "lips": "Bắt đầu từ khẩu hình /e/ mở tự nhiên rồi lướt sang /ɪ/ kéo căng khóe miệng",
+        "tongue": "Lưỡi nâng dần từ vị trí giữa lên cao",
+        "breath": "Phát âm liền mạch: âm đầu ngân 70% thời gian, âm sau lướt nhanh 30%",
+    },
+    "aɪ": {
+        "lips": "Bắt đầu từ miệng mở rộng ở âm /a/ rồi thu hẹp mỉm cười sang /ɪ/",
+        "tongue": "Lưỡi nâng từ đáy miệng lên sát ngạc cứng",
+        "breath": "Phát âm trượt mượt mà từ âm trầm /a/ sang âm bổng /ɪ/",
+    },
+    "ɔɪ": {
+        "lips": "Bắt đầu từ môi chu tròn ở âm /ɔː/ rồi mở bè môi sang /ɪ/",
+        "tongue": "Lưỡi trượt từ vị trí sau lên trước",
+        "breath": "Phát âm liền mạch luồng hơi chuyển từ tròn môi sang phẳng môi",
+    },
+    "əʊ": {
+        "lips": "Bắt đầu từ môi thả lỏng ở âm Schwa /ə/ rồi thu tròn môi lại hướng về /ʊ/",
+        "tongue": "Cuống lưỡi nâng dần lên về phía sau",
+        "breath": "Lướt hơi mềm mại từ âm trung tính sang âm tròn môi",
+    },
+    "aʊ": {
+        "lips": "Bắt đầu từ miệng mở rộng ở âm /a/ rồi nhanh chóng chu tròn môi về /ʊ/",
+        "tongue": "Lưỡi từ đáy miệng nâng cuống lên cao",
+        "breath": "Phát âm liền mạch với luồng hơi mạnh mẽ",
+    },
+    "ɪə": {
+        "lips": "Bắt đầu từ khóe miệng thả lỏng ở /ɪ/ rồi mở nhẹ sang /ə/",
+        "tongue": "Thân lưỡi hạ dần từ cao xuống trung tâm",
+        "breath": "Lướt hơi êm dịu từ âm /ɪ/ ngắn sang âm Schwa nhẹ",
+    },
+    "eə": {
+        "lips": "Bắt đầu từ mép môi mở ở /e/ rồi thả lỏng về /ə/",
+        "tongue": "Lưỡi giữ ở vị trí giữa khoang miệng",
+        "breath": "Phát âm liền mạch, luồng hơi thoát ra tự nhiên",
+    },
+    "ʊə": {
+        "lips": "Bắt đầu từ môi hơi tròn ở /ʊ/ rồi thả lỏng mở nhẹ sang /ə/",
+        "tongue": "Cuống lưỡi hạ dần từ cao xuống thấp",
+        "breath": "Lướt luồng hơi từ âm tròn môi sang âm Schwa thả lỏng",
+    },
+}
+
 class LlamaTutorService:
     def __init__(self):
         self.ollama_url = settings.ollama_url
@@ -70,9 +297,12 @@ class LlamaTutorService:
                 f"Từ/câu mục tiêu: \"{recognized_text}\"\n"
                 f"Điểm số tổng thể: {overall_score_bp / 100:.1f}%\n"
                 f"Danh sách lỗi âm vị phát hiện: {json.dumps(errors, ensure_ascii=False)}\n\n"
-                "Hãy phân tích lỗi và trả về DUY NHẤT một đối tượng JSON hợp lệ gồm 2 trường:\n"
-                "- summaryVi: (chuỗi nhận xét ngắn gọn, chỉ thẳng vào âm vị đọc sai nếu có, hoặc khen ngợi nếu tròn vành rõ chữ)\n"
-                "- tipsVi: (mảng 1 đến 3 chuỗi chỉ dẫn khẩu hình giải phẫu: vị trí môi, đầu lưỡi, độ mở miệng để người học sửa lỗi ngay)\n"
+                "Hãy phân tích chi tiết giải phẫu khẩu hình cho người học Việt Nam và trả về DUY NHẤT một đối tượng JSON hợp lệ gồm 2 trường:\n"
+                "- summaryVi: (chuỗi nhận xét cụ thể: nêu rõ âm vị nào bị phát âm sai hoặc nuốt âm, bị lệch sang âm gì)\n"
+                "- tipsVi: (mảng 3 chỉ dẫn giải phẫu cụ thể, TUYỆT ĐỐI KHÔNG dùng từ sáo rỗng 'quan sát vị trí':\n"
+                "  1. 'Khẩu hình Môi & Hàm: ...' (mô tả rõ độ mở môi, chu tròn, kéo căng hay thả lỏng)\n"
+                "  2. 'Vị trí Lưỡi: ...' (mô tả đầu lưỡi chạm nướu trên, kẹp giữa hai răng hay nâng cuống lưỡi)\n"
+                "  3. 'Cách lấy Hơi & Dây thanh: ...' (mô tả bật luồng hơi nổ, xát qua kẽ răng hay rung thanh quản))\n"
             )
 
             async def _req():
@@ -88,7 +318,7 @@ class LlamaTutorService:
                             "options": {
                                 "temperature": 0.0,
                                 "num_ctx": 1024,
-                                "num_predict": 100,
+                                "num_predict": 250,
                             },
                         },
                     )
@@ -151,10 +381,11 @@ class LlamaTutorService:
         deletions = [err for err in errors if err.get("errorType") == "deletion"]
         if len(deletions) >= 3 or (len(words) == 1 and len(deletions) == len(words[0].phonemes)):
             return TutorFeedback(
-                summaryVi=f"Cảnh báo: Bạn chưa phát âm hoặc âm lượng mic quá nhỏ để nhận diện từ: '{recognized_text}'.",
+                summaryVi=f"Cảnh báo âm thanh: Chưa nhận diện được giọng nói hoặc âm lượng mic quá nhỏ cho từ \"{recognized_text}\".",
                 tipsVi=[
-                    f"Hãy đọc to rõ ràng từ mục tiêu theo mẫu: '{recognized_text}'.",
-                    "Đưa micro gần miệng hơn và kiểm tra quyền truy cập microphone của trình duyệt.",
+                    f"Bước 1: Giữ micro cách miệng 5–10cm, kiểm tra biểu tượng sóng âm khi thu âm.",
+                    f"Bước 2: Phát âm to, rõ ràng từng âm tiết của từ: \"{recognized_text}\".",
+                    "Bước 3: Tránh thì thầm hoặc bấm dừng thu âm quá vội.",
                 ],
                 visemeTimeline=visemes,
             )
@@ -162,76 +393,50 @@ class LlamaTutorService:
         # Out-of-vocabulary / prompt deviation alert
         if len(errors) == len(words[0].phonemes) and all(err.get("actual") in ["ə", "m"] for err in errors):
             return TutorFeedback(
-                summaryVi=f"Bạn đã đọc sai hoặc phát âm một từ/câu khác ngoài từ mục tiêu '{recognized_text}'.",
+                summaryVi=f"Phát âm chưa đúng từ mục tiêu: Bạn có thể đã phát âm nhầm từ khác thay vì \"{recognized_text}\".",
                 tipsVi=[
-                    f"Vui lòng chỉ đọc đúng từ mục tiêu: '{recognized_text}'.",
-                    "Nghe lại audio mẫu của người bản xứ và bấm thu âm lại.",
+                    f"Bước 1: Nghe lại giọng đọc mẫu British RP của từ \"{recognized_text}\".",
+                    "Bước 2: Quan sát kỹ mặt chữ và các âm vị được đánh dấu màu.",
+                    "Bước 3: Nhấn Mic và phát âm lại chậm rãi, chính xác.",
                 ],
                 visemeTimeline=visemes,
             )
 
         if not errors:
             return TutorFeedback(
-                summaryVi=f"Phát âm từ \"{recognized_text}\" rất chuẩn xác, khẩu hình đẹp và tròn vành rõ chữ.",
+                summaryVi=f"Xuất sắc! Bạn phát âm từ \"{recognized_text}\" rất chuẩn xác, khẩu hình tròn vành và dứt khoát.",
                 tipsVi=[
-                    "Duy trì khẩu hình ổn định và bật dứt khoát các phụ âm cuối.",
-                    "Luyện tập ghép từ này vào câu giao tiếp hoàn chỉnh để rèn luyện phản xạ.",
+                    "Duy trì ổn định độ mở khoang miệng và nhịp thở tự nhiên.",
+                    "Chú ý tiếp tục phát huy việc bật rõ ràng các phụ âm đuôi.",
+                    "Hãy luyện tập ghép từ này vào câu dài hơn để tăng phản xạ.",
                 ],
                 visemeTimeline=visemes,
             )
 
         tips: list[str] = []
         error_descriptions: list[str] = []
+        VOWELS = {"iː", "ɪ", "e", "æ", "ɑː", "ʌ", "ɒ", "ɔː", "ʊ", "uː", "ɜː", "ə", "eɪ", "aɪ", "ɔɪ", "əʊ", "aʊ", "ɪə", "eə", "ʊə"}
 
-        for err in errors[:3]:
-            exp = err["expected"]
-            act = err["actual"]
+        for err in errors[:2]:
+            exp = err.get("expected", "")
+            act = err.get("actual", "")
+            kind = "nguyên âm" if exp in VOWELS else "phụ âm"
 
-            # Specific Articulatory Rules for Common Mispronunciations
-            if exp == "ʊ" and act == "uː":
-                error_descriptions.append("nguyên âm ngắn /ʊ/ bị kéo dài thành /uː/")
-                tips.append("Âm /ʊ/ là nguyên âm ngắn thả lỏng môi (~100-150ms). Tuyệt đối không chu tròn môi quá mức và không ngân dài giọng thành /uː/.")
-            elif exp == "uː" and act == "ʊ":
-                error_descriptions.append("nguyên âm dài /uː/ bị phát âm cộc lốc")
-                tips.append("Chu tròn môi về phía trước và giữ hơi căng trong khoang miệng để tạo nguyên âm dài /uː/ trọn vẹn.")
-            elif exp == "θ" and act == "s":
-                error_descriptions.append("âm kẹp răng /θ/ bị thay thế bằng âm xát rít /s/")
-                tips.append("Đặt nhẹ đầu lưỡi ở giữa hai hàm răng cửa, thổi luồng hơi nhẹ qua kẽ răng mà không rung dây thanh và không rít răng.")
-            elif exp == "θ" and act == "t":
-                error_descriptions.append("âm kẹp răng /θ/ bị thay thế bằng âm tắc /t/")
-                tips.append("Không được chạm đầu lưỡi vào nướu răng trên tạo âm /t/. Phải đưa đầu lưỡi ra giữa 2 kẽ răng để tạo âm xát êm ái.")
-            elif exp == "θ":
-                error_descriptions.append("âm răng-môi /θ/ bị thay thế hoặc phát âm chưa rõ")
-                tips.append("Đặt nhẹ đầu lưỡi ở giữa hai hàm răng cửa, thổi luồng hơi nhẹ qua kẽ răng mà không rung dây thanh.")
-            elif exp == "ð":
-                error_descriptions.append("âm /ð/ chưa đủ độ rung dây thanh quản")
-                tips.append("Đặt đầu lưỡi giữa hai hàm răng tương tự âm /θ/ nhưng đồng thời rung nhẹ dây thanh quản để tạo âm /ð/.")
-            elif exp == "k":
-                error_descriptions.append("âm bật /k/ ở đuôi từ bị nuốt hoặc thay thế")
-                tips.append("Nâng cuống lưỡi chạm nhẹ vào ngạc mềm rồi bật dứt khoát luồng hơi để tạo âm đuôi /k/ rõ ràng.")
-            elif exp == "d":
-                error_descriptions.append("âm đuôi /d/ chưa được bật rõ")
-                tips.append("Chạm đầu lưỡi vào gờ nướu răng trên và bật nhẹ luồng hơi kèm rung thanh quản để phát rõ âm đuôi /d/.")
-            elif exp in ["ʃ", "tʃ"]:
-                error_descriptions.append(f"âm /{exp}/ khẩu hình chưa đủ tròn môi")
-                tips.append(f"Chu tròn môi về phía trước, nâng thân lưỡi hướng về ngạc cứng khi phát âm /{exp}/.")
-            elif exp == "ɪ" and act == "iː":
-                error_descriptions.append("nguyên âm ngắn /ɪ/ bị kéo dài căng mép thành /iː/")
-                tips.append("Thả lỏng cơ hàm và khóe miệng tự nhiên cho âm /ɪ/, không căng cơ cười sang hai bên như âm /iː/.")
+            guide = ARTICULATORY_GUIDES.get(exp)
+            if guide:
+                error_descriptions.append(f"{kind} /{exp}/ bị lệch sang /{act or 'bỏ sót'}/")
+                tips.append(f"Khẩu hình Môi & Hàm ({kind} /{exp}/): {guide['lips']}.")
+                tips.append(f"Vị trí Lưỡi ({kind} /{exp}/): {guide['tongue']}.")
+                tips.append(f"Luồng hơi & Dây thanh ({kind} /{exp}/): {guide['breath']}.")
             else:
-                error_descriptions.append(f"âm /{exp}/ bị lệch sang /{act or 'bỏ sót'}/")
-                tips.append(f"Luyện tập riêng âm /{exp}/: quan sát mô hình khoang miệng 3D và chú ý vị trí đặt lưỡi.")
+                error_descriptions.append(f"{kind} /{exp}/ bị lệch sang /{act or 'bỏ sót'}/")
+                tips.append(f"Khẩu hình {kind} /{exp}/: Chú ý mở miệng đúng biên độ và đặt lưỡi đúng vị trí giải phẫu.")
+                tips.append(f"Luồng hơi {kind} /{exp}/: Luyện phát âm riêng biệt {kind} /{exp}/ dứt khoát trước khi ghép từ.")
 
-        # Deduplicate tips
-        seen_tips = []
-        for t in tips:
-            if t not in seen_tips:
-                seen_tips.append(t)
-
-        summary = f"Chưa đạt chuẩn: {', '.join(error_descriptions[:2])}. Cần điều chỉnh khẩu hình."
+        summary = f"Chưa đạt chuẩn: {', '.join(error_descriptions[:2])}."
         return TutorFeedback(
             summaryVi=summary,
-            tipsVi=seen_tips[:5],
+            tipsVi=tips[:6],
             visemeTimeline=visemes,
         )
 

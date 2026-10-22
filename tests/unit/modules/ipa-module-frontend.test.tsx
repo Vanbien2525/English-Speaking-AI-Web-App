@@ -82,10 +82,10 @@ describe("IPA Module Frontend UI/UX Acceptance Suite", () => {
 
     // Articulation guide
     expect(
-      screen.getByText(/Chỉ dẫn giải phẫu khẩu hình:/i)
+      screen.getByText(/Hướng Dẫn Khẩu Hình Miệng/i)
     ).toBeInTheDocument();
 
-    // Word counter (starts at 0/10)
+    // Word counter (starts at 0 / 10 đã luyện)
     expect(screen.getByText("0 / 10 đã luyện")).toBeInTheDocument();
     expect(screen.getByText("Ngủ")).toBeInTheDocument();
     expect(screen.getByText("Màu xanh lá")).toBeInTheDocument();
@@ -100,7 +100,7 @@ describe("IPA Module Frontend UI/UX Acceptance Suite", () => {
     expect(screen.getByText("Cặp Âm Nhầm Lẫn")).toBeInTheDocument();
     expect(screen.getByText("Nối Từ & IPA")).toBeInTheDocument();
     expect(screen.getByText("Nghe & Chọn")).toBeInTheDocument();
-    expect(screen.getByText("Ôn Tập Lỗi Sai (<70%)")).toBeInTheDocument();
+    expect(screen.getByText("Ôn Tập Lỗi Sai (<80%)")).toBeInTheDocument();
 
     // Switch to Nối Từ & IPA
     fireEvent.click(screen.getByText("Nối Từ & IPA"));
@@ -109,7 +109,7 @@ describe("IPA Module Frontend UI/UX Acceptance Suite", () => {
     ).toBeInTheDocument();
 
     // Switch to Ôn Tập Lỗi Sai
-    fireEvent.click(screen.getByText("Ôn Tập Lỗi Sai (<70%)"));
+    fireEvent.click(screen.getByText("Ôn Tập Lỗi Sai (<80%)"));
     expect(
       screen.getByText(/Ôn Tập & Khắc Phục Lỗi Sai/i)
     ).toBeInTheDocument();

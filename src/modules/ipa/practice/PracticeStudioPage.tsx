@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import {
   Sparkles,
   GitCompare,
@@ -19,7 +20,7 @@ export function PracticeStudioPage() {
   const [activeTab, setActiveTab] = useState<PracticeTab>("minimal_pairs");
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8 px-4 py-8 sm:px-6">
+    <div className="w-full space-y-8">
       {/* Top Hero Banner */}
       <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -84,18 +85,23 @@ export function PracticeStudioPage() {
             }`}
           >
             <AlertTriangle className="h-4 w-4" />
-            <span>Ôn Tập Lỗi Sai (&lt;70%)</span>
+            <span>Ôn Tập Lỗi Sai (&lt;80%)</span>
           </button>
         </div>
       </div>
 
-      {/* Render Active Tab Module */}
-      <div>
+      {/* Render Active Tab Module with Smooth Transition */}
+      <motion.div
+        key={activeTab}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+      >
         {activeTab === "minimal_pairs" && <MinimalPairsPractice />}
         {activeTab === "matching" && <MatchingPractice />}
         {activeTab === "listening" && <ListeningPractice />}
         {activeTab === "error_review" && <ErrorReviewPractice />}
-      </div>
+      </motion.div>
     </div>
   );
 }

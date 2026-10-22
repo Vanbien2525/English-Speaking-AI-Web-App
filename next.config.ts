@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  devIndicators: false,
   // three.js ships modern ESM; transpiling keeps tree-shaking consistent across drei/fiber.
   transpilePackages: ["three"],
   async headers() {
