@@ -1,3 +1,4 @@
+import { isSameDay } from "../utils/date-helpers";
 import { create } from "zustand";
 import type {
   VocabularyDeck,
@@ -33,10 +34,7 @@ export interface VocabularyState {
   dailyPracticedCount: number;
   dailyGoalCount: number;
   incrementDailyPracticed: () => void;
-  isDailyFocusMode: boolean;
   isRandomShuffle: boolean;
-  startDailyPractice: () => void;
-  exitDailyPractice: () => void;
   toggleShuffle: () => void;
   fetchTroubleWords: () => Promise<void>;
   startTroubleWordsReview: () => Promise<void>;
@@ -117,26 +115,7 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
   dailyGoalCount: 15,
 
   incrementDailyPracticed: () => set((state) => ({ dailyPracticedCount: state.dailyPracticedCount + 1 })),
-  isDailyFocusMode: false,
   isRandomShuffle: false,
-  startDailyPractice: () => {
-    set({
-      isDailyFocusMode: true,
-      isReviewing: true,
-      activePracticeMode: "flashcard",
-      currentCardIndex: 0,
-      lastReviewResult: null,
-      isFlipped: false,
-    });
-  },
-  exitDailyPractice: () => {
-    set({
-      isDailyFocusMode: false,
-      currentCardIndex: 0,
-      lastReviewResult: null,
-      isFlipped: false,
-    });
-  },
   toggleShuffle: () => {
     set((state) => ({ isRandomShuffle: !state.isRandomShuffle }));
   },
@@ -267,9 +246,23 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
   errorMessage: null,
 
   setSelectedDeckId: (deckId) => {
+    let filteredItems: VocabularyItem[];
+    if (deckId === "system:due") {
+      filteredItems = get().dueItems;
+    } else if (deckId === "system:today") {
+      filteredItems = get().allItems.filter((i) => isSameDay(i.createdAt));
+    } else if (deckId) {
+      filteredItems = get().allItems.filter((i) => i.deckId === deckId);
+    } else {
+      filteredItems = get().allItems;
+    }
+
     set({
       selectedDeckId: deckId,
-      items: deckId ? get().allItems.filter((i) => i.deckId === deckId) : get().allItems,
+      items: filteredItems,
+      currentCardIndex: 0,
+      isFlipped: false,
+      lastReviewResult: null,
     });
   },
 

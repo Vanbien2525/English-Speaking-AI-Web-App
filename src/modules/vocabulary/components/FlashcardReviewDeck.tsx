@@ -25,12 +25,10 @@ export function FlashcardReviewDeck() {
     nextCard,
     prevCard,
     submitSpeakingReview,
-    isDailyFocusMode,
     isRandomShuffle,
     toggleShuffle,
     setQuickAddOpen,
     setBatchImportOpen,
-    exitDailyPractice,
   } = useVocabularyStore();
 
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -42,15 +40,16 @@ export function FlashcardReviewDeck() {
   const [prevCardIndex, setPrevCardIndex] = useState(currentCardIndex);
   const [prevDeckId, setPrevDeckId] = useState(selectedDeckId);
 
-  // Active items based on selected deck and mode
+  // Active items based on selected deck
   const activeDeckItems = useMemo(() => {
-    let list = allItems;
-    if (isDailyFocusMode) {
+    let list: typeof allItems;
+    if (selectedDeckId === "system:due") {
+      list = dueItems;
+    } else if (selectedDeckId === "system:today") {
       list = allItems.filter((i) => isSameDay(i.createdAt));
     } else if (selectedDeckId) {
       list = allItems.filter((i) => i.deckId === selectedDeckId);
     } else {
-      // Khi chọn "Tất cả các bộ": Lấy toàn bộ allItems!
       list = allItems.length > 0 ? allItems : dueItems;
     }
 
@@ -58,7 +57,7 @@ export function FlashcardReviewDeck() {
       return shuffleArray(list);
     }
     return list;
-  }, [allItems, dueItems, selectedDeckId, isDailyFocusMode, isRandomShuffle]);
+  }, [allItems, dueItems, selectedDeckId, isRandomShuffle]);
 
   if (selectedDeckId !== prevDeckId) {
     setPrevDeckId(selectedDeckId);
@@ -212,7 +211,21 @@ export function FlashcardReviewDeck() {
   };
 
   if (!currentItem || activeDeckItems.length === 0) {
-    if (isDailyFocusMode) {
+    if (selectedDeckId === "system:due") {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-amber-500/20 bg-surface shadow-xs">
+          <span className="text-5xl mb-4">🎉</span>
+          <h3 className="text-xl font-bold text-ink mb-2">
+            Hôm nay không còn thẻ nào cần ôn!
+          </h3>
+          <p className="text-xs text-ink-muted max-w-md mb-6 leading-relaxed">
+            Thuật toán SM-2 ghi nhận bạn đã hoàn thành tất cả các thẻ đến hạn. Bạn có thể chọn &quot;Mục tiêu hôm nay&quot; hoặc &quot;Tất cả các bộ&quot; ở danh sách chọn bộ từ để tiếp tục luyện tập.
+          </p>
+        </div>
+      );
+    }
+
+    if (selectedDeckId === "system:today") {
       return (
         <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-emerald-500/20 bg-surface shadow-xs">
           <span className="text-5xl mb-4">🎯</span>
@@ -220,7 +233,7 @@ export function FlashcardReviewDeck() {
             Hôm nay bạn chưa thêm từ mới nào!
           </h3>
           <p className="text-xs text-ink-muted max-w-md mb-6 leading-relaxed">
-            Mục tiêu hàng ngày là 15 từ. Hãy thêm từ vựng mới hôm nay qua tính năng thêm nhanh hoặc nhập hàng loạt để bắt đầu phòng luyện tập 15 từ.
+            Hãy thêm từ vựng mới qua tính năng thêm nhanh hoặc nhập hàng loạt để tự động kích hoạt bộ từ &quot;Mục tiêu hôm nay&quot;.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -236,13 +249,6 @@ export function FlashcardReviewDeck() {
               className="px-4 py-2 rounded-xl text-xs font-bold bg-surface-raised border border-border-subtle text-ink shadow-xs hover:border-primary/40 transition cursor-pointer"
             >
               📥 Nhập hàng loạt
-            </button>
-            <button
-              type="button"
-              onClick={() => exitDailyPractice()}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-ink-muted hover:text-ink transition cursor-pointer"
-            >
-              Quay lại tất cả từ
             </button>
           </div>
         </div>
@@ -271,9 +277,14 @@ export function FlashcardReviewDeck() {
       {/* Session Progress Header */}
       <div className="w-full flex flex-wrap items-center justify-between gap-2 px-2 text-sm text-ink-muted">
         <div className="flex items-center gap-2">
-          {isDailyFocusMode && (
+          {selectedDeckId === "system:due" && (
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20 flex items-center gap-1">
+              <span>🔥</span> Cần Ôn Hôm Nay
+            </span>
+          )}
+          {selectedDeckId === "system:today" && (
             <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1">
-              <span>⚡</span> 15 Từ Mới Hôm Nay
+              <span>⚡</span> Mục Tiêu Hôm Nay
             </span>
           )}
           <span className="font-semibold text-ink">

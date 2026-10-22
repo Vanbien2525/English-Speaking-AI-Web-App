@@ -8,7 +8,6 @@ import {
   BookOpen,
   Box,
   Flame,
-  CheckCircle2,
   Volume2,
   Languages,
 } from "lucide-react";
@@ -70,7 +69,7 @@ export function AppNavbar() {
           </Link>
 
           {/* Primary Navigation Links */}
-          <nav className="hidden md:flex items-center gap-2" aria-label="Main Navigation">
+          <nav className="hidden md:flex items-center gap-2 flex-nowrap whitespace-nowrap" aria-label="Main Navigation">
             {/* 1. Dashboard */}
             <Link
               href="/dashboard"
@@ -94,7 +93,7 @@ export function AppNavbar() {
               }`}
             >
               <BookOpen className="h-4 w-4 text-emerald-600" />
-              <span>Học IPA (44 Âm &amp; Luyện Tập)</span>
+              <span>Học IPA</span>
               {masteredCount > 0 && (
                 <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
                   {masteredCount}/44
@@ -135,15 +134,7 @@ export function AppNavbar() {
         </div>
 
         {/* Right Status Badge */}
-        <div className="flex items-center gap-3">
-          {/* Quick Stats: Mastered count */}
-          <div className="hidden sm:flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-1.5 text-xs font-semibold text-slate-700 shadow-xs">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-            <span>Thành thạo (≥80%):</span>
-            <span className="font-bold text-emerald-600">{masteredCount}</span>
-            <span className="text-slate-400">/ 44</span>
-          </div>
-
+        <div className="flex items-center gap-3 flex-nowrap whitespace-nowrap">
           {/* Quick Stats: Daily Streak */}
           <div className="flex items-center gap-1.5 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3.5 py-1.5 text-xs font-bold text-amber-700 shadow-xs">
             <Flame className="h-4 w-4 text-amber-500 fill-amber-500 animate-pulse" />
@@ -170,7 +161,7 @@ export function AppNavbar() {
           }`}
         >
           <BookOpen className="h-4 w-4" />
-          Học IPA &amp; Luyện Tập
+          Học IPA
         </Link>
         <Link
           href="/vocabulary"

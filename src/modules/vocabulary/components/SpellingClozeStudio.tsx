@@ -5,7 +5,7 @@ import type { ClozeSpellingQuestion } from "@/core/dto/vocabulary.dto";
 import { useVocabularyStore } from "../stores/useVocabularyStore";
 
 export function SpellingClozeStudio() {
-  const { selectedDeckId, isDailyFocusMode, decks, incrementDailyPracticed } = useVocabularyStore();
+  const { selectedDeckId, decks, incrementDailyPracticed } = useVocabularyStore();
   const [isShaking, setIsShaking] = useState(false);
   const [questions, setQuestions] = useState<ClozeSpellingQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -30,7 +30,7 @@ export function SpellingClozeStudio() {
     setShowIpaHint(false);
 
     try {
-      const effectiveDeckId = isDailyFocusMode ? "today" : selectedDeckId;
+      const effectiveDeckId = selectedDeckId === "system:due" ? "due" : selectedDeckId === "system:today" ? "today" : selectedDeckId;
       const url = effectiveDeckId
         ? `/api/vocabulary/quiz/cloze?deckId=${encodeURIComponent(effectiveDeckId)}&limit=15`
         : "/api/vocabulary/quiz/cloze?limit=15";
@@ -45,13 +45,13 @@ export function SpellingClozeStudio() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedDeckId, isDailyFocusMode]);
+  }, [selectedDeckId]);
 
   useEffect(() => {
     let ignore = false;
     async function load() {
       try {
-        const effectiveDeckId = isDailyFocusMode ? "today" : selectedDeckId;
+        const effectiveDeckId = selectedDeckId === "system:due" ? "due" : selectedDeckId === "system:today" ? "today" : selectedDeckId;
       const url = effectiveDeckId
         ? `/api/vocabulary/quiz/cloze?deckId=${encodeURIComponent(effectiveDeckId)}&limit=15`
         : "/api/vocabulary/quiz/cloze?limit=15";
@@ -71,7 +71,7 @@ export function SpellingClozeStudio() {
     return () => {
       ignore = true;
     };
-  }, [selectedDeckId, isDailyFocusMode]);
+  }, [selectedDeckId]);
 
   const currentQ = questions[currentIndex];
 

@@ -937,7 +937,7 @@ export class VocabularyService {
 
   async getItems(deckId?: string, userId?: string): Promise<VocabularyItem[]> {
     const uid = userId ?? this.defaultUserId;
-    if (deckId === "today") {
+    if (deckId === "today" || deckId === "system:today") {
       const all = await this.vocabRepo.findItemsByUserId(uid);
       const today = new Date();
       return all.filter((it) => {
@@ -948,6 +948,9 @@ export class VocabularyService {
           d.getDate() === today.getDate()
         );
       });
+    }
+    if (deckId === "due" || deckId === "system:due") {
+      return this.vocabRepo.findDueReviewItems(uid);
     }
     if (deckId) {
       return this.vocabRepo.findItemsByDeckId(deckId);

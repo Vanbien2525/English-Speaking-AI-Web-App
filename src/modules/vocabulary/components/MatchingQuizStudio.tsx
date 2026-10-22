@@ -14,7 +14,7 @@ interface ShuffledItem {
 }
 
 export function MatchingQuizStudio() {
-  const { selectedDeckId, isDailyFocusMode, incrementDailyPracticed } = useVocabularyStore();
+  const { selectedDeckId, incrementDailyPracticed } = useVocabularyStore();
   const [pairs, setPairs] = useState<MatchingQuizPair[]>([]);
   const [englishItems, setEnglishItems] = useState<ShuffledItem[]>([]);
   const [vietnameseItems, setVietnameseItems] = useState<ShuffledItem[]>([]);
@@ -53,7 +53,7 @@ export function MatchingQuizStudio() {
     setShowCompletion(false);
 
     try {
-      const effectiveDeckId = isDailyFocusMode ? "today" : selectedDeckId;
+      const effectiveDeckId = selectedDeckId === "system:due" ? "due" : selectedDeckId === "system:today" ? "today" : selectedDeckId;
       const url = effectiveDeckId
         ? `/api/vocabulary/quiz/matching?deckId=${encodeURIComponent(effectiveDeckId)}&limit=15`
         : "/api/vocabulary/quiz/matching?limit=15";
@@ -88,13 +88,13 @@ export function MatchingQuizStudio() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedDeckId, isDailyFocusMode]);
+  }, [selectedDeckId]);
 
   useEffect(() => {
     let ignore = false;
     async function load() {
       try {
-        const effectiveDeckId = isDailyFocusMode ? "today" : selectedDeckId;
+        const effectiveDeckId = selectedDeckId === "system:due" ? "due" : selectedDeckId === "system:today" ? "today" : selectedDeckId;
       const url = effectiveDeckId
         ? `/api/vocabulary/quiz/matching?deckId=${encodeURIComponent(effectiveDeckId)}&limit=15`
         : "/api/vocabulary/quiz/matching?limit=15";
@@ -135,7 +135,7 @@ export function MatchingQuizStudio() {
     return () => {
       ignore = true;
     };
-  }, [selectedDeckId, isDailyFocusMode]);
+  }, [selectedDeckId]);
 
   // Check matching logic when both word and definition are selected
   const handleSelectWord = (item: ShuffledItem) => {

@@ -7,7 +7,7 @@ import { Volume2, CheckCircle2, RotateCcw, HelpCircle, ArrowRight } from "lucide
 import { toast } from "sonner";
 
 export function VietnameseToEnglishStudio() {
-  const { selectedDeckId, isDailyFocusMode, incrementDailyPracticed } = useVocabularyStore();
+  const { selectedDeckId, incrementDailyPracticed } = useVocabularyStore();
   const [questions, setQuestions] = useState<VietnameseToEnglishQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [inputAnswer, setInputAnswer] = useState("");
@@ -28,7 +28,7 @@ export function VietnameseToEnglishStudio() {
     setShowHint(false);
 
     try {
-      const effectiveDeckId = isDailyFocusMode ? "today" : selectedDeckId;
+      const effectiveDeckId = selectedDeckId === "system:due" ? "due" : selectedDeckId === "system:today" ? "today" : selectedDeckId;
       const url = effectiveDeckId
         ? `/api/vocabulary/quiz/vi-to-en?deckId=${encodeURIComponent(effectiveDeckId)}&limit=15`
         : "/api/vocabulary/quiz/vi-to-en?limit=15";
@@ -43,13 +43,13 @@ export function VietnameseToEnglishStudio() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedDeckId, isDailyFocusMode]);
+  }, [selectedDeckId]);
 
   useEffect(() => {
     let ignore = false;
     async function load() {
       try {
-        const effectiveDeckId = isDailyFocusMode ? "today" : selectedDeckId;
+        const effectiveDeckId = selectedDeckId === "system:due" ? "due" : selectedDeckId === "system:today" ? "today" : selectedDeckId;
       const url = effectiveDeckId
         ? `/api/vocabulary/quiz/vi-to-en?deckId=${encodeURIComponent(effectiveDeckId)}&limit=15`
         : "/api/vocabulary/quiz/vi-to-en?limit=15";
@@ -69,7 +69,7 @@ export function VietnameseToEnglishStudio() {
     return () => {
       ignore = true;
     };
-  }, [selectedDeckId, isDailyFocusMode]);
+  }, [selectedDeckId]);
 
   useEffect(() => {
     if (!isLoading) {

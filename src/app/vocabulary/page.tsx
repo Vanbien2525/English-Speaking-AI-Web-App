@@ -27,9 +27,7 @@ export default function VocabularyPage() {
     setSelectedDeckId,
     decks,
     allItems,
-    items,
-    isDailyFocusMode,
-    exitDailyPractice,
+    dueItems,
   } = useVocabularyStore();
 
   useEffect(() => {
@@ -46,39 +44,6 @@ export default function VocabularyPage() {
 
         {/* Daily Goal & Trouble Words Smart Review Bar */}
         <DailyProgressBar />
-
-        {/* Daily Focus Mode Header Banner */}
-        {isDailyFocusMode && (
-          <div className="w-full p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/10 border-2 border-emerald-500/30 flex flex-wrap items-center justify-between gap-4 shadow-sm">
-            <div className="flex items-center gap-3.5">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white font-bold text-xl shadow-md">
-                ⚡
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base sm:text-lg font-bold text-ink">
-                    Phòng Luyện Tập 15 Từ Mới Hôm Nay
-                  </h2>
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 font-bold border border-emerald-500/30">
-                    {todayWordsCount}/15 từ
-                  </span>
-                </div>
-                <p className="text-xs text-ink-muted mt-0.5">
-                  Luyện tập chuyên sâu 4 kỹ năng cho các từ mới nạp hôm nay để củng cố phản xạ và nhớ lâu hơn.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => exitDailyPractice()}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-surface border border-border-subtle text-ink hover:bg-surface-raised transition cursor-pointer shadow-xs"
-            >
-              <span>←</span>
-              <span>Thoát về tất cả từ</span>
-            </button>
-          </div>
-        )}
 
         {/* Practice Mode Navigation Tabs */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 rounded-2xl bg-surface border border-border-subtle shadow-xs">
@@ -158,33 +123,33 @@ export default function VocabularyPage() {
 
           <div className="flex items-center gap-2">
             {/* Deck Selector for All 4 Practice Modes */}
-            {isDailyFocusMode ? (
-              <div className="flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/30">
-                <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
-                  <span>⚡</span> 15 từ mới hôm nay ({todayWordsCount} từ)
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 bg-surface-raised px-2.5 py-1.5 rounded-xl border border-border-subtle">
-                <span className="text-xs font-semibold text-ink-muted">Bộ từ:</span>
-                <select
-                  value={selectedDeckId || ""}
-                  onChange={(e) => setSelectedDeckId(e.target.value ? e.target.value : null)}
-                  className="bg-transparent text-xs font-bold text-ink outline-none cursor-pointer"
-                  title="Chọn bộ từ để luyện tập cho tất cả các chế độ"
-                >
-                  <option value="">Tất cả các bộ ({(allItems || items).length} từ)</option>
-                  {decks.map((deck) => {
-                    const count = (allItems || items).filter((it) => it.deckId === deck.id).length;
-                    return (
-                      <option key={deck.id} value={deck.id}>
-                        {deck.name} ({count} từ)
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5 bg-surface-raised px-2.5 py-1.5 rounded-xl border border-border-subtle">
+              <span className="text-xs font-semibold text-ink-muted">Bộ từ:</span>
+              <select
+                value={selectedDeckId || ""}
+                onChange={(e) => setSelectedDeckId(e.target.value ? e.target.value : null)}
+                className="bg-transparent text-xs font-bold text-ink outline-none cursor-pointer"
+                title="Chọn bộ từ để luyện tập cho tất cả các chế độ"
+              >
+                <option value="">Tất cả các bộ ({allItems.length} từ)</option>
+                <option value="system:due">
+                  🔥 Cần ôn hôm nay ({dueItems.length} từ)
+                </option>
+                {todayWordsCount > 0 && (
+                  <option value="system:today">
+                    ⚡ Mục tiêu hôm nay ({todayWordsCount} từ)
+                  </option>
+                )}
+                {decks.map((deck) => {
+                  const count = allItems.filter((it) => it.deckId === deck.id).length;
+                  return (
+                    <option key={deck.id} value={deck.id}>
+                      {deck.name} ({count} từ)
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
 
             <button
               type="button"

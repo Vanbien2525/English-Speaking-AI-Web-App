@@ -71,16 +71,16 @@
       "exampleSentenceVi": "Hôm nay là một buổi sáng tuyệt đẹp.",
       "articulatoryTipVi": "Bật nhẹ âm /b/, chuyển sang âm trượt /j/ kết hợp nguyên âm dài /uː/, thả lỏng cho các âm tiết sau.",
       "referenceAudioUrl": null,
-      "sm2Repetition": 0,
-      "sm2IntervalDays": 1,
+      "sm2Repetition": 1,
+      "sm2IntervalDays": 2,
       "sm2EaseFactorBp": 2500,
       "sm2NextReviewAt": "2026-10-22T14:06:52.608Z",
       "sm2LastReviewedAt": null,
-      "lastMasteryScoreBp": null,
+      "lastMasteryScoreBp": 6500,
       "isMastered": false,
       "masteryAttemptsCount": 0,
       "createdAt": "2026-10-22T14:06:52.608Z",
-      "updatedAt": "2026-10-22T15:04:12.876Z"
+      "updatedAt": "2026-10-22T17:13:58.272Z"
     },
     {
       "id": "580e7d99-cb25-418c-9d9f-4c92ee51c0a0",

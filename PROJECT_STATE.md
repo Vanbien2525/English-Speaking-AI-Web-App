@@ -194,18 +194,28 @@
 - [x] **Khắc phục lỗi Flashcard hiển thị 2/4 từ**:
   - Gỡ bỏ điều kiện ép lấy `dueItems` khi chọn "Tất cả các bộ" trong [FlashcardReviewDeck.tsx](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/components/FlashcardReviewDeck.tsx). Giờ đây khi chọn "Tất cả các bộ", Flashcard hiển thị đúng toàn bộ $4/4$ từ của kho từ.
   - Sửa chu kỳ hiển thị: Thay vì nhãn tĩnh `1 ngày`, hiển thị chu kỳ SM-2 thực tế của từng thẻ (`currentItem.sm2IntervalDays` ngày).
-- [x] **Phòng Luyện Tập 15 Từ Mới Hôm Nay (Daily Focus Studio)**:
-  - Bổ sung nút **`⚡ Luyện Tập Ngay`** với badge đếm số từ tạo hôm nay (`${todayWordsCount}/15 từ`) tại [DailyProgressBar.tsx](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/components/DailyProgressBar.tsx). Nút này luôn luôn thường trực kể cả khi đã đạt 100% mục tiêu ngày.
-  - Khi bấm nút, kích hoạt `isDailyFocusMode`: Hiển thị Banner Chế độ Tập trung chuyên sâu tại [page.tsx](file:///d:/English-Speaking-AI-Web-App/src/app/vocabulary/page.tsx), khóa danh sách từ cố định đúng 15 từ mới tạo hôm nay qua 4 chế độ: `Thẻ Flashcard SM-2`, `Nghe Gõ Từ`, `Nối Từ & Nghĩa`, `Tiếng Việt → Tiếng Anh`.
-  - Có nút `← Thoát về tất cả từ` ở góc trên để quay lại kho từ bất kỳ lúc nào.
 - [x] **Đồng bộ hóa 0ms & Cơ chế Xáo Trộn Ngẫu Nhiên (Random Shuffle)**:
-  - Khi thêm 15 từ mới (qua QuickAdd hoặc BatchImport), dữ liệu được gắn `createdAt` hôm nay và tự động đồng bộ ngay lập tức vào cả "Tất cả các bộ" lẫn "15 từ hôm nay".
   - Tích hợp nút `🔀 Xáo trộn thẻ` và thuật toán **Fisher-Yates Shuffle** ([date-helpers.ts](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/utils/date-helpers.ts)): Khi ôn toàn bộ kho từ, hệ thống xáo trộn ngẫu nhiên thứ tự từ mới và từ cũ để chống học vẹt.
-  - Hỗ trợ tham số `deckId="today"` trong [vocabulary-service.ts](file:///d:/English-Speaking-AI-Web-App/src/core/services/vocabulary-service.ts) cho tất cả các API bài tập.
+  - Hỗ trợ tham số `deckId="today"` và `deckId="due"` trong [vocabulary-service.ts](file:///d:/English-Speaking-AI-Web-App/src/core/services/vocabulary-service.ts).
+
+## [x] Hoàn Thiện & Tinh Chỉnh Đợt 11: Menu Ngang Tinh Gọn, Bộ Từ Mặc Định "Cần Ôn Hôm Nay" & "Mục Tiêu Hôm Nay" (HOÀN THÀNH 100%)
+- [x] **Yêu cầu 1: Tinh gọn menu ngang [AppNavbar.tsx](file:///d:/English-Speaking-AI-Web-App/src/components/navigation/AppNavbar.tsx)**:
+  - Rút gọn `"Học IPA (44 Âm & Luyện Tập)"` thành `"Học IPA"`.
+  - Xóa bỏ huy hiệu rườm rà `"Thành thạo (≥80%): X / 44"`.
+  - Ép `flex-nowrap whitespace-nowrap` trên toàn bộ navigation links để đảm bảo 100% chữ nằm trên cùng 1 hàng duy nhất, tuyệt đối không bị rớt dòng.
+- [x] **Yêu cầu 2: Bổ sung bộ từ mặc định "Cần ôn hôm nay" (Thuật toán SM-2)**:
+  - Trong dropdown Bộ từ, bổ sung tùy chọn `🔥 Cần ôn hôm nay (X từ)`.
+  - Số lượng và danh sách từ đồng bộ 100% tức thời với ô thống kê "Cần ôn hôm nay" trên Header (`dueItems.length`, các từ có `sm2NextReviewAt <= now`).
+- [x] **Yêu cầu 3: Bỏ hoàn toàn chức năng "Luyện tập ngay" ở thanh tiến độ ngày**:
+  - Gỡ bỏ nút "Luyện tập ngay" khỏi [DailyProgressBar.tsx](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/components/DailyProgressBar.tsx) và dọn dẹp các banner dư thừa, đưa giao diện về trạng thái tối giản, tinh tế.
+- [x] **Yêu cầu 4: Cơ chế "Mục tiêu hôm nay" tự động kích hoạt linh hoạt**:
+  - Vào ngày mới, người dùng add bao nhiêu từ thì mục tiêu ngày tự động là bấy nhiêu từ (ví dụ add 10 từ thì mục tiêu 10 từ).
+  - Tự động tạo và hiển thị bộ từ `⚡ Mục tiêu hôm nay (X từ)` ngay khi người dùng thêm từ đầu tiên vào ngày mới.
+  - Tích hợp đồng nhất vào dropdown Bộ từ duy nhất ở thanh điều hướng để người dùng có thể luyện tập cả 4 chế độ (Flashcard, Nghe gõ từ, Nối từ & nghĩa, Tiếng Việt → Tiếng Anh) mà không bị trùng lặp giao diện.
 - [x] **100% Quality Gates**:
-  - Vitest Test Suite: **144/144 tests passed (23 test files)** (Bổ sung test `VFM-08`).
+  - Vitest Test Suite: **144/144 tests passed (23 test files)**.
   - TypeScript Strict: **0 errors (`npm run typecheck`)**.
   - ESLint Static Analysis: **0 warnings, 0 errors (`npm run lint`)**.
   - Next.js Production Build: **Build pass 100% (98 static & SSG pages)**.
 
-## [>] Vị Trí Hiện Tại: [Đã Hoàn Tất Phòng Luyện Tập 15 Từ Mới Hôm Nay & Sửa Lỗi Hiển Thị Flashcard 4/4 Từ + Random Shuffle, 144 Vitest & Next.js Build Pass 100%]
+## [>] Vị Trí Hiện Tại: [Đã Hoàn Tất Menu Ngang Tinh Gọn, Bộ Từ Mặc Định "Cần Ôn Hôm Nay" & "Mục Tiêu Hôm Nay", Pass 100% Quality Gates]
