@@ -53,7 +53,7 @@ describe("Active Vocabulary & 3D Flashcards Backend Acceptance Suite (FEAT-ACTIV
   });
 
   it("TC-VOCAB-03: Processes batch multi-word import via POST /api/vocabulary/batch-import", async () => {
-    const rawText = "1. eloquent, 2. resilience, 3. ubiquitous";
+    const rawText = "1. eloquent, 2. serendipity, 3. ubiquitous";
     const request = new Request("http://localhost:3000/api/vocabulary/batch-import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

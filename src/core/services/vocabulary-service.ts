@@ -21,7 +21,7 @@ import {
 } from "@/core/domain/sm2";
 import type { VocabularyRepository } from "@/core/repositories/vocabulary-repository";
 import { InMemoryVocabularyRepository } from "@/core/repositories/vocabulary-repository";
-import { lookupAcademicDictionary } from "./dictionary-data";
+import { lookupAcademicDictionary, generateArticulatoryTip } from "./dictionary-data";
 
 // -----------------------------------------------------------------------------
 // Fallback Dictionary Database for Offline / Fast Execution
@@ -152,8 +152,11 @@ export class VocabularyService {
             }
           }
 
-          // Find native UK/US audio if provided
-          const audioEntry = entry.phonetics?.find((p: { audio?: string }) => p.audio && p.audio.length > 0);
+          // Prioritize British RP (UK) audio if available, falling back to any valid audio
+          const ukAudioEntry = entry.phonetics?.find(
+            (p: { audio?: string }) => p.audio && (p.audio.includes("-uk") || p.audio.includes("/uk/"))
+          );
+          const audioEntry = ukAudioEntry || entry.phonetics?.find((p: { audio?: string }) => p.audio && p.audio.length > 0);
           if (audioEntry?.audio) {
             audioUrl = audioEntry.audio;
           }
@@ -191,7 +194,7 @@ export class VocabularyService {
       exampleVi = `Chúng tôi đã luyện tập phát âm chuẩn xác từ "${word}" trong giao tiếp hằng ngày.`;
     }
     if (!tipVi) {
-      tipVi = `Chú ý đặt khẩu hình môi - lưỡi tự nhiên, bật hơi rõ ràng và nhấn đúng trọng âm chính của từ "${word}".`;
+      tipVi = generateArticulatoryTip(word, phonetic);
     }
 
     return {

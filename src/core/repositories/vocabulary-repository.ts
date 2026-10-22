@@ -58,6 +58,10 @@ export interface VocabularyRepository {
     updatedItem: Partial<VocabularyItem> & { id: string };
   }): Promise<{ reviewId: string; isIdempotentHit: boolean }>;
 
+  updateItemLevelManual(itemId: string, isMastered: boolean, scoreBp?: number): Promise<VocabularyItem>;
+  deleteItem(itemId: string): Promise<boolean>;
+  deleteDeck(deckId: string): Promise<boolean>;
+
   getMetrics(userId: string): Promise<VocabularyMetrics>;
   getXpLedger(userId: string): Promise<Array<{ id: string; userId: string; amount: bigint; balanceAfter: bigint; source: string; idempotencyKey: string }>>;
   seedUserStats?(userId: string, totalXp: bigint): void;
@@ -207,6 +211,21 @@ export class InMemoryVocabularyRepository implements VocabularyRepository {
     articulatoryTipVi?: string | null;
     referenceAudioUrl?: string | null;
   }): Promise<VocabularyItem> {
+    const normalizedWord = data.word.trim().toLowerCase();
+    const normalizedPos = (data.partOfSpeech ?? "noun").trim().toLowerCase();
+
+    // Enforce Duplicate Prevention Rule: Reject identical (word, partOfSpeech) in the same deck
+    const existing = Array.from(this.items.values()).find(
+      (item) =>
+        item.deckId === data.deckId &&
+        item.word.trim().toLowerCase() === normalizedWord &&
+        item.partOfSpeech.trim().toLowerCase() === normalizedPos
+    );
+
+    if (existing) {
+      throw new Error(`Từ vựng "${data.word}" (${data.partOfSpeech ?? "noun"}) đã tồn tại trong bộ từ này.`);
+    }
+
     const now = new Date().toISOString();
     const item: VocabularyItem = {
       id: crypto.randomUUID(),
@@ -242,6 +261,49 @@ export class InMemoryVocabularyRepository implements VocabularyRepository {
     }
 
     return item;
+  }
+
+  async updateItemLevelManual(itemId: string, isMastered: boolean, scoreBp?: number): Promise<VocabularyItem> {
+    const item = this.items.get(itemId);
+    if (!item) {
+      throw new Error(`Vocabulary item not found: ${itemId}`);
+    }
+
+    item.isMastered = isMastered;
+    if (scoreBp !== undefined) {
+      item.lastMasteryScoreBp = scoreBp;
+    } else if (isMastered && (item.lastMasteryScoreBp === null || item.lastMasteryScoreBp < 8000)) {
+      item.lastMasteryScoreBp = 8500;
+    }
+    item.updatedAt = new Date().toISOString();
+
+    return item;
+  }
+
+  async deleteItem(itemId: string): Promise<boolean> {
+    const item = this.items.get(itemId);
+    if (!item) return false;
+
+    this.items.delete(itemId);
+    const deck = this.decks.get(item.deckId);
+    if (deck && deck.itemCount > 0) {
+      deck.itemCount -= 1;
+      deck.updatedAt = new Date().toISOString();
+    }
+    return true;
+  }
+
+  async deleteDeck(deckId: string): Promise<boolean> {
+    if (!this.decks.has(deckId)) return false;
+
+    this.decks.delete(deckId);
+    // Remove associated items
+    for (const [itemId, item] of Array.from(this.items.entries())) {
+      if (item.deckId === deckId) {
+        this.items.delete(itemId);
+      }
+    }
+    return true;
   }
 
   async findDueReviewItems(userId: string, beforeDate: Date = new Date()): Promise<VocabularyItem[]> {
