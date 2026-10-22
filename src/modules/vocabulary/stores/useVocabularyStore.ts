@@ -9,7 +9,7 @@ import type {
   ReviewLevel,
 } from "@/core/dto/vocabulary.dto";
 
-export type PracticeMode = "flashcard" | "listening_quiz" | "spelling_cloze";
+export type PracticeMode = "flashcard" | "spelling_cloze" | "matching_quiz" | "recall_quiz" | "listening_quiz";
 export type VocabularyLevelFilter = "all" | "again" | "good" | "easy";
 
 export interface VocabularyState {
@@ -50,6 +50,11 @@ export interface VocabularyState {
   nextCard: () => void;
   prevCard: () => void;
   resetReviewSession: () => void;
+
+  // Real-Time 0ms State Sync Actions
+  updateItemLevelManual: (itemId: string, isMastered: boolean, scoreBp?: number) => void;
+  deleteItem: (itemId: string) => void;
+  deleteDeck: (deckId: string) => void;
 
   // API Async Actions
   fetchInitialData: () => Promise<void>;
@@ -174,6 +179,103 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
       isReviewing: false,
       lastReviewResult: null,
     }),
+
+  updateItemLevelManual: (itemId, isMastered, scoreBp) => {
+    const { items, dueItems, metrics } = get();
+
+    const updatedItems = items.map((item) => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          isMastered,
+          lastMasteryScoreBp: scoreBp !== undefined ? scoreBp : isMastered ? 8500 : 5000,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return item;
+    });
+
+    const updatedDueItems = dueItems.map((item) => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          isMastered,
+          lastMasteryScoreBp: scoreBp !== undefined ? scoreBp : isMastered ? 8500 : 5000,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return item;
+    });
+
+    const totalWords = updatedItems.length;
+    const masteredWordsCount = updatedItems.filter((i) => i.isMastered).length;
+    const retentionRateBp = totalWords > 0 ? Math.round((masteredWordsCount / totalWords) * 10000) : 0;
+
+    set({
+      items: updatedItems,
+      dueItems: updatedDueItems,
+      metrics: {
+        ...metrics,
+        masteredWordsCount,
+        retentionRateBp,
+      },
+    });
+  },
+
+  deleteItem: (itemId) => {
+    const { items, dueItems, metrics, decks } = get();
+    const targetItem = items.find((i) => i.id === itemId);
+
+    const updatedItems = items.filter((i) => i.id !== itemId);
+    const updatedDueItems = dueItems.filter((i) => i.id !== itemId);
+
+    const totalWords = updatedItems.length;
+    const masteredWordsCount = updatedItems.filter((i) => i.isMastered).length;
+    const retentionRateBp = totalWords > 0 ? Math.round((masteredWordsCount / totalWords) * 10000) : 0;
+
+    const updatedDecks = decks.map((deck) => {
+      if (targetItem && deck.id === targetItem.deckId && deck.itemCount > 0) {
+        return { ...deck, itemCount: deck.itemCount - 1 };
+      }
+      return deck;
+    });
+
+    set({
+      items: updatedItems,
+      dueItems: updatedDueItems,
+      decks: updatedDecks,
+      metrics: {
+        ...metrics,
+        totalWords,
+        masteredWordsCount,
+        retentionRateBp,
+      },
+    });
+  },
+
+  deleteDeck: (deckId) => {
+    const { decks, selectedDeckId, items, dueItems, metrics } = get();
+    const updatedDecks = decks.filter((d) => d.id !== deckId);
+    const updatedItems = items.filter((i) => i.deckId !== deckId);
+    const updatedDueItems = dueItems.filter((i) => i.deckId !== deckId);
+
+    const totalWords = updatedItems.length;
+    const masteredWordsCount = updatedItems.filter((i) => i.isMastered).length;
+    const retentionRateBp = totalWords > 0 ? Math.round((masteredWordsCount / totalWords) * 10000) : 0;
+
+    set({
+      decks: updatedDecks,
+      items: updatedItems,
+      dueItems: updatedDueItems,
+      selectedDeckId: selectedDeckId === deckId ? (updatedDecks[0]?.id ?? null) : selectedDeckId,
+      metrics: {
+        ...metrics,
+        totalWords,
+        masteredWordsCount,
+        retentionRateBp,
+      },
+    });
+  },
 
   fetchInitialData: async () => {
     set({ isLoading: true, errorMessage: null });

@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { VocabularyService } from "@/core/services/vocabulary-service";
 import { InMemoryVocabularyRepository } from "@/core/repositories/vocabulary-repository";
+import { generateArticulatoryTip } from "@/core/services/dictionary-data";
 import { GET as getListeningQuiz } from "@/app/api/vocabulary/quiz/listening/route";
 import { GET as getClozeQuiz } from "@/app/api/vocabulary/quiz/cloze/route";
 import { setVocabularyDependencies } from "@/core/services/vocabulary-service";
+import { useVocabularyStore } from "@/modules/vocabulary/stores/useVocabularyStore";
 
 describe("Active Vocabulary & Speaking Mastery Advanced Suite (FEAT-VOCABULARY-6-ENHANCEMENTS)", () => {
   let repo: InMemoryVocabularyRepository;
@@ -124,5 +126,119 @@ describe("Active Vocabulary & Speaking Mastery Advanced Suite (FEAT-VOCABULARY-6
     expect(data.questions.length).toBeGreaterThanOrEqual(1);
     expect(data.questions[0].sentenceWithBlank).toContain("_____");
     expect(data.questions[0].hintIpa).toBeDefined();
+  });
+
+  it("ADV-06: Prioritizes British RP IPA transcriptions and produces dynamic articulatory tips", async () => {
+    const exampleRes = await service.enrichWord("example");
+    expect(exampleRes.ipa).toBe("/ɪɡˈzɑːm.pəl/");
+
+    const danceRes = await service.enrichWord("dance");
+    expect(danceRes.ipa).toBe("/dɑːns/");
+
+    const carRes = await service.enrichWord("car");
+    expect(carRes.ipa).toBe("/kɑː/");
+
+    const waterRes = await service.enrichWord("water");
+    expect(waterRes.ipa).toBe("/ˈwɔː.tə/");
+
+    // Verify generateArticulatoryTip for dental fricatives and open jaw
+    const tip = generateArticulatoryTip("think", "/θɪŋk/");
+    expect(tip).toContain("xát răng");
+    expect(tip).not.toBe("Đặt khẩu hình tự nhiên...");
+  });
+
+  it("ADV-07: Enforces duplicate prevention rule (word, partOfSpeech) while allowing different parts of speech", async () => {
+    await repo.createItem({
+      deckId: defaultDeckId,
+      userId,
+      word: "run",
+      partOfSpeech: "verb",
+      ipa: "rʌn",
+      definitionVi: "Chạy, di chuyển nhanh",
+      exampleSentenceEn: "I run every morning.",
+      exampleSentenceVi: "Tôi chạy mỗi sáng.",
+    });
+
+    // Allowing same word with DIFFERENT part of speech (noun)
+    const runNoun = await repo.createItem({
+      deckId: defaultDeckId,
+      userId,
+      word: "run",
+      partOfSpeech: "noun",
+      ipa: "rʌn",
+      definitionVi: "Chuyến chạy, đợt vận hành",
+      exampleSentenceEn: "He went for a 5km run.",
+      exampleSentenceVi: "Anh ấy đi chạy 5km.",
+    });
+    expect(runNoun.id).toBeDefined();
+
+    // Rejecting duplicate entry with identical (word, partOfSpeech)
+    await expect(
+      repo.createItem({
+        deckId: defaultDeckId,
+        userId,
+        word: "run",
+        partOfSpeech: "verb",
+        ipa: "rʌn",
+        definitionVi: "Chạy",
+        exampleSentenceEn: "She can run fast.",
+        exampleSentenceVi: "Cô ấy có thể chạy nhanh.",
+      })
+    ).rejects.toThrow(/đã tồn tại trong bộ từ này/);
+  });
+
+  it("ADV-08: Performs 0ms real-time state synchronization on manual level updates and deletions", () => {
+    const store = useVocabularyStore.getState();
+
+    // Initialize store state
+    useVocabularyStore.setState({
+      items: [
+        {
+          id: "item-1",
+          deckId: defaultDeckId,
+          userId,
+          word: "practice",
+          ipa: "ˈpræk.tɪs",
+          partOfSpeech: "noun",
+          definitionVi: "Luyện tập",
+          exampleSentenceEn: "Practice makes perfect.",
+          exampleSentenceVi: "Luyện tập tạo nên sự hoàn hảo.",
+          articulatoryTipVi: null,
+          referenceAudioUrl: null,
+          sm2Repetition: 0,
+          sm2IntervalDays: 1,
+          sm2EaseFactorBp: 2500,
+          sm2NextReviewAt: new Date().toISOString(),
+          sm2LastReviewedAt: null,
+          lastMasteryScoreBp: null,
+          isMastered: false,
+          masteryAttemptsCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      metrics: {
+        totalWords: 1,
+        dueCardsCount: 1,
+        masteredWordsCount: 0,
+        retentionRateBp: 0,
+      },
+    });
+
+    // 1. Update level manually to mastered
+    store.updateItemLevelManual("item-1", true, 8500);
+
+    let updatedState = useVocabularyStore.getState();
+    expect(updatedState.items[0]?.isMastered).toBe(true);
+    expect(updatedState.metrics.masteredWordsCount).toBe(1);
+    expect(updatedState.metrics.retentionRateBp).toBe(10000);
+
+    // 2. Delete item
+    store.deleteItem("item-1");
+
+    updatedState = useVocabularyStore.getState();
+    expect(updatedState.items.length).toBe(0);
+    expect(updatedState.metrics.totalWords).toBe(0);
+    expect(updatedState.metrics.masteredWordsCount).toBe(0);
   });
 });
