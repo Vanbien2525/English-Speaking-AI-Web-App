@@ -61,8 +61,41 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json(item, { status: 201 });
   } catch (err: unknown) {
     const error = err as Error;
+    const isDuplicate = error.message?.includes("đã tồn tại trong danh sách");
     return NextResponse.json(
-      { error: { code: "CREATE_ITEM_FAILED", message: error.message } },
+      { error: { code: isDuplicate ? "DUPLICATE_ITEM" : "CREATE_ITEM_FAILED", message: error.message } },
+      { status: isDuplicate ? 409 : 500 },
+    );
+  }
+}
+
+export async function DELETE(request: Request): Promise<Response> {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    if (!id) {
+      return NextResponse.json(
+        { error: { code: "MISSING_ID", message: "Thiếu ID từ vựng cần xóa" } },
+        { status: 400 },
+      );
+    }
+
+    const deps = getVocabularyDependencies();
+    const service = new VocabularyService(deps.vocabRepo, deps.defaultUserId);
+    const deleted = await service.deleteItem(id, deps.defaultUserId);
+
+    if (!deleted) {
+      return NextResponse.json(
+        { error: { code: "NOT_FOUND", message: "Không tìm thấy từ vựng hoặc không thể xóa" } },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ success: true, id }, { status: 200 });
+  } catch (err: unknown) {
+    const error = err as Error;
+    return NextResponse.json(
+      { error: { code: "DELETE_ITEM_FAILED", message: error.message } },
       { status: 500 },
     );
   }

@@ -10,6 +10,7 @@ import {
   Flame,
   CheckCircle2,
   Volume2,
+  Languages,
 } from "lucide-react";
 import { getStoredPhonemeScores, getStoredErrorWords } from "@/shared/lib/ipa-storage";
 import { getRealDailyStreak } from "@/shared/lib/streak-tracker";
@@ -42,7 +43,9 @@ export function AppNavbar() {
     };
   }, [pathname]);
 
-  const isIpaActive = pathname.startsWith("/ipa");
+  const currentPath = pathname ?? "";
+  const isIpaActive = currentPath.startsWith("/ipa");
+  const isVocabActive = currentPath.startsWith("/vocabulary");
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-md transition-all">
@@ -72,7 +75,7 @@ export function AppNavbar() {
             <Link
               href="/dashboard"
               className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
-                pathname === "/dashboard" || pathname === "/"
+                currentPath === "/dashboard" || currentPath === "/"
                   ? "bg-slate-100 text-slate-900 shadow-xs"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               }`}
@@ -104,7 +107,20 @@ export function AppNavbar() {
               )}
             </Link>
 
-            {/* 3. 3D Model (Coming Soon) - Disabled state */}
+            {/* 3. Phân Hệ Từ Vựng */}
+            <Link
+              href="/vocabulary"
+              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+                isVocabActive
+                  ? "bg-emerald-50 text-emerald-700 shadow-xs ring-1 ring-emerald-200"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              <Languages className="h-4 w-4 text-emerald-600" />
+              <span>Từ vựng</span>
+            </Link>
+
+            {/* 4. 3D Model (Coming Soon) - Disabled state */}
             <div
               className="relative group flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-slate-400 bg-slate-100/60 cursor-not-allowed select-none opacity-70"
               title="Tính năng mô phỏng khoang miệng 3D đang được tinh chỉnh hoàn thiện"
@@ -141,7 +157,7 @@ export function AppNavbar() {
         <Link
           href="/dashboard"
           className={`flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-3 rounded-lg ${
-            pathname === "/dashboard" || pathname === "/" ? "text-emerald-600 font-bold" : "text-slate-600"
+            currentPath === "/dashboard" || currentPath === "/" ? "text-emerald-600 font-bold" : "text-slate-600"
           }`}
         >
           <LayoutDashboard className="h-4 w-4" />
@@ -155,6 +171,15 @@ export function AppNavbar() {
         >
           <BookOpen className="h-4 w-4" />
           Học IPA &amp; Luyện Tập
+        </Link>
+        <Link
+          href="/vocabulary"
+          className={`flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-3 rounded-lg ${
+            isVocabActive ? "text-emerald-600 font-bold" : "text-slate-600"
+          }`}
+        >
+          <Languages className="h-4 w-4" />
+          Từ vựng
         </Link>
         <div className="flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-3 text-slate-300 cursor-not-allowed">
           <Box className="h-4 w-4" />

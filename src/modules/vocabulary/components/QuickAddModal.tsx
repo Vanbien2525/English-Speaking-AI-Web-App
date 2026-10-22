@@ -12,6 +12,8 @@ export function QuickAddModal() {
     isEnriching,
     isLoading,
     setQuickAddOpen,
+    allItems,
+    errorMessage,
     enrichWord,
     createItem,
   } = useVocabularyStore();
@@ -62,6 +64,16 @@ export function QuickAddModal() {
       return;
     }
 
+    const alreadyExists = (allItems || []).some(
+      (it) =>
+        it.word.trim().toLowerCase() === inputWord.trim().toLowerCase() &&
+        it.partOfSpeech.trim().toLowerCase() === partOfSpeech.trim().toLowerCase()
+    );
+    if (alreadyExists) {
+      toast.error(`Từ "${inputWord.trim()}" (${partOfSpeech}) đã có trong kho từ vựng của bạn! Bạn có thể chọn từ loại khác.`);
+      return;
+    }
+
     const success = await createItem({
       deckId: targetDeckId,
       word: inputWord.trim().toLowerCase(),
@@ -85,6 +97,8 @@ export function QuickAddModal() {
       setArticulatoryTipVi("");
       setReferenceAudioUrl(null);
       setQuickAddOpen(false);
+    } else {
+      toast.error(errorMessage || "Không thể thêm từ này vào bộ từ");
     }
   };
 

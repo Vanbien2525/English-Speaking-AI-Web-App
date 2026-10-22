@@ -5,7 +5,8 @@ import type { ClozeSpellingQuestion } from "@/core/dto/vocabulary.dto";
 import { useVocabularyStore } from "../stores/useVocabularyStore";
 
 export function SpellingClozeStudio() {
-  const { selectedDeckId, decks } = useVocabularyStore();
+  const { selectedDeckId, decks, incrementDailyPracticed } = useVocabularyStore();
+  const [isShaking, setIsShaking] = useState(false);
   const [questions, setQuestions] = useState<ClozeSpellingQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [inputAnswer, setInputAnswer] = useState("");
@@ -14,6 +15,7 @@ export function SpellingClozeStudio() {
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showIpaHint, setShowIpaHint] = useState(false);
 
   const currentDeck = decks.find((d) => d.id === selectedDeckId);
 
@@ -25,6 +27,7 @@ export function SpellingClozeStudio() {
     setCurrentIndex(0);
     setScore(0);
     setIsFinished(false);
+    setShowIpaHint(false);
 
     try {
       const url = selectedDeckId
@@ -83,6 +86,10 @@ export function SpellingClozeStudio() {
 
     if (correct) {
       setScore((s) => s + 1);
+      incrementDailyPracticed();
+    } else {
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
     }
   };
 
@@ -92,6 +99,7 @@ export function SpellingClozeStudio() {
       setInputAnswer("");
       setIsAnswered(false);
       setIsCorrect(false);
+      setShowIpaHint(false);
     } else {
       setIsFinished(true);
     }
@@ -187,16 +195,29 @@ export function SpellingClozeStudio() {
         )}
       </div>
 
-      {/* Phonetic & Meaning Hints */}
+      {/* Phonetic & Meaning Hints (Requirement 10: Toggle IPA Hint) */}
       <div className="flex items-center justify-between p-3.5 rounded-xl bg-surface border border-border-subtle text-xs">
         <div className="flex items-center gap-2">
-          <span className="text-ink-muted">Gợi ý IPA:</span>
-          <span className="ipa font-bold text-primary text-sm">/{currentQ.hintIpa}/</span>
+          {showIpaHint ? (
+            <div className="flex items-center gap-1.5 animate-fade-in">
+              <span className="text-ink-muted">Gợi ý IPA:</span>
+              <span className="ipa font-bold text-primary text-sm">/{currentQ.hintIpa}/</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowIpaHint(true)}
+              className="text-primary hover:underline font-semibold flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 border border-primary/25 hover:bg-primary/20 transition cursor-pointer"
+              title="Bấm để hiển thị gợi ý phiên âm IPA"
+            >
+              <span>💡</span> Xem gợi ý IPA
+            </button>
+          )}
         </div>
         <button
           type="button"
           onClick={() => playPronunciation(currentQ.targetWord)}
-          className="text-primary hover:underline font-semibold flex items-center gap-1"
+          className="text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
         >
           <span>🔊</span> Nghe phát âm
         </button>
@@ -211,12 +232,14 @@ export function SpellingClozeStudio() {
             onChange={(e) => setInputAnswer(e.target.value)}
             disabled={isAnswered}
             placeholder="Gõ từ tiếng Anh chính xác vào đây..."
-            className={`flex-1 px-4 py-3 rounded-xl bg-surface-raised border text-base font-semibold outline-none transition ${
+            className={`flex-1 px-4 py-3 rounded-xl bg-surface-raised border text-base font-semibold outline-hidden transition ${
               isAnswered
                 ? isCorrect
-                  ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
-                  : "border-coral-500 bg-coral-500/10 text-coral-400"
-                : "border-border-subtle text-ink focus:border-primary"
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-300"
+                  : "border-amber-500 bg-amber-50 text-amber-900 ring-2 ring-amber-300"
+                : isShaking
+                  ? "animate-shake border-amber-500 bg-amber-50 text-amber-900 ring-2 ring-amber-300"
+                  : "border-border-subtle text-ink focus:border-primary"
             }`}
             autoFocus
           />

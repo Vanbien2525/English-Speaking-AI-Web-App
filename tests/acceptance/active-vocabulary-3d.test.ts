@@ -53,7 +53,7 @@ describe("Active Vocabulary & 3D Flashcards Backend Acceptance Suite (FEAT-ACTIV
   });
 
   it("TC-VOCAB-03: Processes batch multi-word import via POST /api/vocabulary/batch-import", async () => {
-    const rawText = "1. eloquent, 2. resilience, 3. ubiquitous";
+    const rawText = "1. eloquent, 2. meticulous, 3. ubiquitous";
     const request = new Request("http://localhost:3000/api/vocabulary/batch-import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -193,5 +193,34 @@ describe("Active Vocabulary & 3D Flashcards Backend Acceptance Suite (FEAT-ACTIV
 
     // No duplicate XP entry was created
     expect(count2).toBe(count1);
+  });
+  it("TC-VOCAB-08: Rejects duplicate word with same partOfSpeech but allows if partOfSpeech differs", async () => {
+    // articulation (noun) already exists in default deck
+    await expect(
+      vocabRepo.createItem({
+        deckId: defaultDeckId,
+        userId: defaultUserId,
+        word: "articulation",
+        ipa: "/ɑːˌtɪk.jəˈleɪ.ʃən/",
+        partOfSpeech: "noun",
+        definitionVi: "Sự phát âm rõ ràng",
+        exampleSentenceEn: "Clear articulation is vital.",
+        exampleSentenceVi: "Phát âm rõ ràng là rất quan trọng.",
+      })
+    ).rejects.toThrow("đã tồn tại trong danh sách từ vựng");
+
+    // Adding articulation with different part of speech (e.g. verb) is permitted
+    const verbItem = await vocabRepo.createItem({
+      deckId: defaultDeckId,
+      userId: defaultUserId,
+      word: "articulation",
+      ipa: "/ɑːˌtɪk.jəˈleɪ.ʃən/",
+      partOfSpeech: "verb",
+      definitionVi: "Phát âm rõ ràng",
+      exampleSentenceEn: "We need to articulate words properly.",
+      exampleSentenceVi: "Chúng ta cần phát âm rõ ràng các từ.",
+    });
+    expect(verbItem.id).toBeDefined();
+    expect(verbItem.partOfSpeech).toBe("verb");
   });
 });

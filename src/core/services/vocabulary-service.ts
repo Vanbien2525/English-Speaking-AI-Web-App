@@ -12,6 +12,11 @@ import type {
   ListeningQuizQuestion,
   ClozeSpellingQuestion,
   ReviewLevel,
+  MatchingQuizPair,
+  SentencePracticeItem,
+  VietnameseToEnglishQuestion,
+  TroubleWordItem,
+  ManualVocabularyLevel,
 } from "@/core/dto/vocabulary.dto";
 import {
   calculateQualityFromScore,
@@ -26,6 +31,7 @@ import { lookupAcademicDictionary } from "./dictionary-data";
 // -----------------------------------------------------------------------------
 // Fallback Dictionary Database for Offline / Fast Execution
 // -----------------------------------------------------------------------------
+// Common offline entries
 const LOCAL_FALLBACK_DICTIONARY: Record<
   string,
   {
@@ -37,6 +43,54 @@ const LOCAL_FALLBACK_DICTIONARY: Record<
     articulatoryTipVi: string;
   }
 > = {
+  mother: {
+    ipa: "ˈmʌð.ər",
+    partOfSpeech: "noun",
+    definitionVi: "Mẹ, người mẹ, tình mẫu tử.",
+    exampleSentenceEn: "My mother is very kind and patient.",
+    exampleSentenceVi: "Mẹ tôi rất nhân hậu và kiên nhẫn.",
+    articulatoryTipVi: "Ngậm môi tạo âm mũi /m/, mở khẩu hình tự nhiên cho nguyên âm ngắn /ʌ/, đặt lưỡi giữa hai răng cho âm hữu thanh /ð/.",
+  },
+  happy: {
+    ipa: "ˈhæp.i",
+    partOfSpeech: "adjective",
+    definitionVi: "Hạnh phúc, vui sướng, cảm thấy mãn nguyện.",
+    exampleSentenceEn: "I feel very happy today.",
+    exampleSentenceVi: "Hôm nay tôi cảm thấy rất hạnh phúc.",
+    articulatoryTipVi: "Bật hơi ấm từ họng cho /h/, hạ hàm mở rộng cho nguyên âm bẹt /æ/, mím môi bật nhanh /p/.",
+  },
+  father: {
+    ipa: "ˈfɑː.ðər",
+    partOfSpeech: "noun",
+    definitionVi: "Cha, bố, người cha trong gia đình.",
+    exampleSentenceEn: "My father is a hardworking person.",
+    exampleSentenceVi: "Bố tôi là một người làm việc chăm chỉ.",
+    articulatoryTipVi: "Răng trên chạm môi dưới cho /f/, mở miệng sâu cho /ɑː/, đặt lưỡi giữa răng cho /ð/.",
+  },
+  brother: {
+    ipa: "ˈbrʌð.ər",
+    partOfSpeech: "noun",
+    definitionVi: "Anh trai, em trai.",
+    exampleSentenceEn: "My brother plays football very well.",
+    exampleSentenceVi: "Anh trai tôi chơi bóng đá rất giỏi.",
+    articulatoryTipVi: "Bật môi cho /b/ kết hợp uốn lưỡi /r/, nguyên âm /ʌ/ mở tự nhiên, kẹp nhẹ lưỡi cho /ð/.",
+  },
+  run: {
+    ipa: "/rʌn/",
+    partOfSpeech: "verb",
+    definitionVi: "Chạy, di chuyển nhanh bằng chân; vận hành, hoạt động.",
+    exampleSentenceEn: "I run in the park every morning.",
+    exampleSentenceVi: "Tôi chạy bộ trong công viên mỗi buổi sáng.",
+    articulatoryTipVi: "Đầu lưỡi cong nhẹ về phía sau cho âm /r/, mở miệng tự nhiên phát âm nguyên âm ngắn /ʌ/, nâng đầu lưỡi chạm nướu cho âm mũi /n/.",
+  },
+  beautiful: {
+    ipa: "/ˈbjuː.tɪ.fəl/",
+    partOfSpeech: "adjective",
+    definitionVi: "Xinh đẹp, tuyệt đẹp, mang lại sự dễ chịu cho thị giác hoặc tâm hồn.",
+    exampleSentenceEn: "It is a beautiful morning today.",
+    exampleSentenceVi: "Hôm nay là một buổi sáng tuyệt đẹp.",
+    articulatoryTipVi: "Bật nhẹ âm /b/, chuyển sang âm trượt /j/ kết hợp nguyên âm dài /uː/, thả lỏng cho các âm tiết sau.",
+  },
   articulation: {
     ipa: "/ɑːˌtɪk.jəˈleɪ.ʃən/",
     partOfSpeech: "noun",
@@ -80,6 +134,61 @@ const LOCAL_FALLBACK_DICTIONARY: Record<
 };
 
 // -----------------------------------------------------------------------------
+
+/**
+ * Real-time English-to-Vietnamese translation helper using Google Translate API with timeout.
+ */
+export async function translateEnToVi(text: string): Promise<string | null> {
+  if (!text || !text.trim()) return null;
+  const trimmed = text.trim();
+
+  // Tier 1: Google Translate API
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=${encodeURIComponent(trimmed)}`,
+      { signal: controller.signal, headers: { "User-Agent": "Mozilla/5.0" } }
+    );
+    clearTimeout(timeoutId);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && Array.isArray(data[0])) {
+        const translated = (data[0] as Array<[string, ...unknown[]]>).map((item) => item[0]).filter(Boolean).join("").trim();
+        if (translated && translated.toLowerCase() !== trimmed.toLowerCase()) {
+          return translated;
+        }
+      }
+    }
+  } catch {
+    // fallback to Tier 2
+  }
+
+  // Tier 2: MyMemory Translation API Fallback
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(trimmed)}&langpair=en|vi`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+    if (res.ok) {
+      const data = (await res.json()) as { responseData?: { translatedText?: string } };
+      if (data?.responseData?.translatedText) {
+        const trans = data.responseData.translatedText.trim();
+        if (trans && trans.toLowerCase() !== trimmed.toLowerCase()) {
+          return trans;
+        }
+      }
+    }
+  } catch {
+    // fallback
+  }
+
+  return null;
+}
+
 // Application Service Dependencies
 // -----------------------------------------------------------------------------
 export interface VocabularyServiceDependencies {
@@ -87,10 +196,18 @@ export interface VocabularyServiceDependencies {
   defaultUserId: string;
 }
 
+const globalForVocab = globalThis as unknown as {
+  __vocabRepoInstance?: VocabularyRepository;
+};
+
 let globalVocabDeps: VocabularyServiceDependencies = {
-  vocabRepo: new InMemoryVocabularyRepository(),
+  vocabRepo: globalForVocab.__vocabRepoInstance ?? new InMemoryVocabularyRepository(),
   defaultUserId: "019488a0-7b24-789a-bcde-000000000001",
 };
+
+if (!globalForVocab.__vocabRepoInstance) {
+  globalForVocab.__vocabRepoInstance = globalVocabDeps.vocabRepo;
+}
 
 export function setVocabularyDependencies(deps: Partial<VocabularyServiceDependencies>) {
   globalVocabDeps = { ...globalVocabDeps, ...deps };
@@ -103,6 +220,198 @@ export function getVocabularyDependencies(): VocabularyServiceDependencies {
 // -----------------------------------------------------------------------------
 // Core Vocabulary Application Service
 // -----------------------------------------------------------------------------
+
+/**
+ * Datamuse API IPA lookup helper for authentic phonetic transcriptions.
+ */
+export async function fetchIpaFromDatamuse(word: string): Promise<string | null> {
+  if (!word || !word.trim()) return null;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word.trim())}&qe=sp&md=r&ipa=1`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const top = data.find((d: { word?: string }) => d.word?.toLowerCase() === word.toLowerCase()) || data[0];
+        const ipaTag = top.tags?.find((t: string) => t.startsWith("ipa_pron:"));
+        if (ipaTag) {
+          const raw = ipaTag.replace("ipa_pron:", "").trim();
+          if (raw) {
+            return `/${raw}/`;
+          }
+        }
+      }
+    }
+  } catch {
+    // fallback
+  }
+  return null;
+}
+
+
+function generateDiverseShortExample(word: string, pos: string): string {
+  const hash = word.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+
+  if (pos === "verb") {
+    const verbTemplates = [
+      `We usually ${word} together on weekends.`,
+      `She likes to ${word} in the morning.`,
+      `They decided to ${word} early today.`,
+      `You should ${word} more often.`,
+      `He learned how to ${word} quickly.`,
+      `I always ${word} before starting work.`,
+    ];
+    return verbTemplates[hash % verbTemplates.length] ?? verbTemplates[0]!;
+  }
+
+  if (pos === "adjective") {
+    const adjTemplates = [
+      `The weather today looks very ${word}.`,
+      `This is a truly ${word} idea.`,
+      `She has a really ${word} smile.`,
+      `They enjoyed a ${word} evening together.`,
+      `The story had a very ${word} ending.`,
+      `His work was exceptionally ${word}.`,
+    ];
+    return adjTemplates[hash % adjTemplates.length] ?? adjTemplates[0]!;
+  }
+
+  if (pos === "adverb") {
+    const advTemplates = [
+      `She explained the lesson very ${word}.`,
+      `He finished his work quite ${word}.`,
+      `They walked ${word} through the quiet park.`,
+      `Please speak ${word} so everyone hears.`,
+      `The train arrived surprisingly ${word}.`,
+    ];
+    return advTemplates[hash % advTemplates.length] ?? advTemplates[0]!;
+  }
+
+  const nounTemplates = [
+    `The new ${word} is on the table.`,
+    `She showed me her favorite ${word}.`,
+    `We need a reliable ${word} today.`,
+    `He bought a very nice ${word}.`,
+    `This ${word} helps us solve the problem.`,
+    `They found a curious ${word} outside.`,
+    `I use this ${word} almost every day.`,
+  ];
+  return nounTemplates[hash % nounTemplates.length] ?? nounTemplates[0]!;
+}
+
+
+/**
+ * British RP (Received Pronunciation) IPA fetcher via Wiktionary API.
+ */
+export async function fetchBritishRpIpaFromWiktionary(word: string): Promise<string | null> {
+  if (!word || !word.trim()) return null;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(
+      `https://en.wiktionary.org/w/api.php?action=parse&page=${encodeURIComponent(word.toLowerCase().trim())}&prop=wikitext&format=json`,
+      {
+        signal: controller.signal,
+        headers: { "User-Agent": "EnglishSpeakingTutor/1.0 (https://github.com/)" },
+      }
+    );
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data = await res.json();
+      const text = data.parse?.wikitext?.["*"] || "";
+      // Look for RP or UK tag
+      const rpMatch = text.match(/\{\{IPA\|en\|(\/[^}]+?\/)[^}]*?(?:RP|UK)/i);
+      if (rpMatch && rpMatch[1]) {
+        return rpMatch[1].trim().replace(/ɹ/g, "r");
+      }
+      const altMatch = text.match(/(?:RP|UK)[^}]*?\{\{IPA\|en\|(\/[^}]+?\/)/i);
+      if (altMatch && altMatch[1]) {
+        return altMatch[1].trim().replace(/ɹ/g, "r");
+      }
+    }
+  } catch {
+    // fallback
+  }
+  return null;
+}
+
+/**
+ * Generates comprehensive articulatory and tongue placement guidance based on IPA phonemes.
+ */
+export function generateArticulatoryTip(word: string, ipa: string): string {
+  const cleanIpa = ipa || "";
+  const tips: string[] = [];
+
+  // 1. Stress analysis
+  if (cleanIpa.startsWith("/ˈ") || (cleanIpa.includes("ˈ") && cleanIpa.indexOf("ˈ") < 4)) {
+    tips.push("Nhấn mạnh trọng âm vào âm tiết đầu tiên");
+  } else if (cleanIpa.includes("ˈ")) {
+    tips.push("Nhấn rõ trọng âm vào âm tiết có đánh dấu");
+  }
+
+  // 2. Dental consonants
+  if (cleanIpa.includes("ð")) {
+    tips.push("đặt đầu lưỡi chạm nhẹ cạnh dưới răng cửa trên và rung mạnh dây thanh quản cho âm /ð/");
+  } else if (cleanIpa.includes("θ")) {
+    tips.push("đặt đầu lưỡi nhẹ giữa hai hàm răng, đẩy luồng hơi êm không rung thanh quản cho âm /θ/");
+  }
+
+  // 3. Affricates & Sibilants
+  if (cleanIpa.includes("tʃ")) {
+    tips.push("đầu lưỡi áp sát gờ nướu rồi bật dứt khoát môi chu nhẹ cho âm /tʃ/");
+  } else if (cleanIpa.includes("dʒ")) {
+    tips.push("chu tròn môi, đầu lưỡi bật mạnh khỏi gờ nướu kết hợp rung thanh quản cho âm /dʒ/");
+  } else if (cleanIpa.includes("ʃ")) {
+    tips.push("chu nhẹ môi tròn, nâng thân lưỡi gần chạm ngạc cứng đẩy hơi ma sát cho âm /ʃ/");
+  } else if (cleanIpa.includes("ʒ")) {
+    tips.push("khẩu hình tròn môi ma sát kết hợp rung thanh quản cho âm /ʒ/");
+  }
+
+  // 4. Liquids & Glides
+  if (cleanIpa.includes("r") || cleanIpa.includes("ɹ")) {
+    tips.push("đầu lưỡi cong nhẹ về phía sau vòm họng không chạm ngạc cho âm /r/");
+  }
+  if (cleanIpa.includes("l̩") || cleanIpa.includes("l/") || cleanIpa.endsWith("l/")) {
+    tips.push("nâng đầu lưỡi chạm chắc vào gờ nướu răng cửa trên cho âm kết thúc /l/");
+  }
+  if (cleanIpa.includes("z")) {
+    tips.push("khép hờ răng, rung thanh quản tạo tiếng vo ve cho phụ âm /z/");
+  }
+
+  // 5. British RP Vowels
+  if (cleanIpa.includes("ɑː")) {
+    tips.push("hạ quai hàm mở rộng miệng theo chiều dọc cho nguyên âm dài /ɑː/ sâu lắng chuẩn British RP");
+  } else if (cleanIpa.includes("ɔː")) {
+    tips.push("chu tròn môi mở vừa phải, ngân dài nguyên âm /ɔː/ tròn trịa chuẩn Anh");
+  } else if (cleanIpa.includes("ɜː")) {
+    tips.push("mở miệng tự nhiên thư giãn, giữ lưỡi ở vị trí trung tâm cho nguyên âm /ɜː/");
+  } else if (cleanIpa.includes("uː")) {
+    tips.push("chu môi tròn nhỏ về phía trước, ngân dài nguyên âm /uː/");
+  } else if (cleanIpa.includes("iː")) {
+    tips.push("mở rộng khóe môi sang hai bên như cười nhẹ cho nguyên âm dài /iː/");
+  } else if (cleanIpa.includes("æ")) {
+    tips.push("hạ hàm mở rộng miệng sang hai bên cho nguyên âm bẹt /æ/");
+  } else if (cleanIpa.includes("ʌ")) {
+    tips.push("mở miệng tự nhiên vừa phải, phát âm dứt khoát nguyên âm ngắn /ʌ/");
+  } else if (cleanIpa.includes("ɒ")) {
+    tips.push("môi hơi tròn nhẹ, phát âm ngắn gọn dứt khoát cho âm /ɒ/ chuẩn Anh - Anh");
+  }
+
+  if (tips.length === 0) {
+    return `Đặt khẩu hình tự nhiên, phát âm rõ âm đầu và nhấn đúng trọng âm của từ "${word}".`;
+  }
+
+  const capitalized = tips[0]!.charAt(0).toUpperCase() + tips[0]!.slice(1);
+  if (tips.length === 1) {
+    return `${capitalized}.`;
+  }
+  return `${capitalized}; ${tips.slice(1).join("; ")}.`;
+}
+
 export class VocabularyService {
   constructor(
     private readonly vocabRepo: VocabularyRepository = globalVocabDeps.vocabRepo,
@@ -131,6 +440,14 @@ export class VocabularyService {
     let tipVi = cached?.articulatoryTipVi || "";
     let audioUrl: string | null = null;
 
+    // 1b. Check British RP from Wiktionary
+    if (!phonetic) {
+      const wiktionaryRp = await fetchBritishRpIpaFromWiktionary(word);
+      if (wiktionaryRp) {
+        phonetic = wiktionaryRp;
+      }
+    }
+
     // 2. Fetch Free Dictionary API for native pronunciation audio and extra definitions
     try {
       const controller = new AbortController();
@@ -138,39 +455,59 @@ export class VocabularyService {
 
       const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, {
         signal: controller.signal,
+        headers: { "User-Agent": "Mozilla/5.0" },
       });
       clearTimeout(timeoutId);
 
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          const entry = data[0];
-          if (!phonetic) {
-            const apiPhonetic = entry.phonetic || entry.phonetics?.find((p: { text?: string }) => p.text)?.text;
-            if (apiPhonetic) {
-              phonetic = apiPhonetic.startsWith("/") ? apiPhonetic : `/${apiPhonetic}/`;
-            }
-          }
+          for (const entry of data) {
+            const phonetics = (entry.phonetics || []) as Array<{ text?: string; audio?: string }>;
 
-          // Find native UK/US audio if provided
-          const audioEntry = entry.phonetics?.find((p: { audio?: string }) => p.audio && p.audio.length > 0);
-          if (audioEntry?.audio) {
-            audioUrl = audioEntry.audio;
-          }
-
-          if (entry.meanings && entry.meanings.length > 0) {
-            const primaryMeaning = entry.meanings[0];
-            if (!partOfSpeech || partOfSpeech === "noun") {
-              partOfSpeech = primaryMeaning.partOfSpeech || partOfSpeech;
+            // Find British UK RP phonetic text
+            if (!phonetic) {
+              const ukAudioP = phonetics.find((p) => p.audio?.includes("-uk") && p.text?.trim());
+              const rpTextP = phonetics.find((p) => p.text && (p.text.includes("ɑː") || p.text.includes("ɔː") || p.text.includes("ɜː") || (p.text.endsWith("ə/") && !p.text.includes("ɚ"))));
+              const nonUsP = phonetics.find((p) => p.text && !p.audio?.includes("-us") && !p.text.includes("ɚ") && !p.text.includes("ɝ"));
+              const anyP = phonetics.find((p) => p.text && p.text.trim().length > 0);
+              const target = ukAudioP || rpTextP || nonUsP || anyP;
+              if (target?.text) {
+                const clean = target.text.replace(/^\/+|\/+$/g, "").replace(/ɹ/g, "r").trim();
+                if (clean) phonetic = `/${clean}/`;
+              } else if (entry.phonetic) {
+                const clean = entry.phonetic.replace(/^\/+|\/+$/g, "").replace(/ɹ/g, "r").trim();
+                if (clean) phonetic = `/${clean}/`;
+              }
             }
 
-            const def = primaryMeaning.definitions?.[0];
-            if (def?.definition && !definitionVi) {
-              definitionVi = `${def.definition} (Định nghĩa ngữ cảnh: ${word})`;
+            // Find UK audio URL
+            if (!audioUrl) {
+              const ukAudio = phonetics.find((p) => p.audio?.includes("-uk") && p.audio.length > 0);
+              const anyAudio = phonetics.find((p) => p.audio && p.audio.length > 0);
+              const targetAudio = ukAudio || anyAudio;
+              if (targetAudio?.audio) {
+                audioUrl = targetAudio.audio;
+              }
             }
-            if (def?.example && !exampleEn) {
-              exampleEn = def.example;
-              exampleVi = `Ví dụ sử dụng từ "${word}" trong giao tiếp thực tế.`;
+
+            if (entry.meanings && entry.meanings.length > 0) {
+              const primaryMeaning = entry.meanings[0];
+              if (!partOfSpeech || partOfSpeech === "noun") {
+                partOfSpeech = primaryMeaning.partOfSpeech || partOfSpeech;
+              }
+              const def = primaryMeaning.definitions?.[0];
+              if (def?.definition && !definitionVi) {
+                const defVi = await translateEnToVi(def.definition);
+                if (defVi) {
+                  definitionVi = defVi;
+                }
+              }
+              if (def?.example && !exampleEn && def.example.split(" ").length <= 8) {
+                exampleEn = def.example;
+                const transEx = await translateEnToVi(def.example);
+                exampleVi = transEx || `Ví dụ sử dụng từ "${word}".`;
+              }
             }
           }
         }
@@ -179,19 +516,37 @@ export class VocabularyService {
       // Free Dictionary API timeout or offline - gracefully proceed
     }
 
-    // 3. Fallback / Heuristics if dictionary was incomplete
+    // 3. Fallback to Datamuse if still no phonetic
+    if (!phonetic) {
+      const dmIpa = await fetchIpaFromDatamuse(word);
+      if (dmIpa) {
+        phonetic = dmIpa.replace(/ɹ/g, "r");
+      }
+    }
+
     if (!phonetic) {
       phonetic = `/${word}/`;
     }
+
+    // If definitionVi is not available from cached/academic dictionary, translate directly
     if (!definitionVi) {
-      definitionVi = `Từ vựng "${word}" (${partOfSpeech}): Sử dụng trong văn cảnh giao tiếp và học thuật.`;
+      const wordTrans = await translateEnToVi(word);
+      if (wordTrans && wordTrans.toLowerCase() !== word.toLowerCase()) {
+        definitionVi = wordTrans;
+      } else {
+        definitionVi = `Nghĩa của từ "${word}" (${partOfSpeech})`;
+      }
     }
+
+    // Requirement 9: Generate short, concise, easy-to-read example sentences (5-8 words)
     if (!exampleEn) {
-      exampleEn = `We practiced pronouncing the word "${word}" accurately in daily conversation.`;
-      exampleVi = `Chúng tôi đã luyện tập phát âm chuẩn xác từ "${word}" trong giao tiếp hằng ngày.`;
+      exampleEn = generateDiverseShortExample(word, partOfSpeech);
+      const transSentence = await translateEnToVi(exampleEn);
+      exampleVi = transSentence || `Câu ví dụ chứa từ "${word}".`;
     }
-    if (!tipVi) {
-      tipVi = `Chú ý đặt khẩu hình môi - lưỡi tự nhiên, bật hơi rõ ràng và nhấn đúng trọng âm chính của từ "${word}".`;
+
+    if (!tipVi || tipVi.startsWith("Đặt khẩu hình tự nhiên")) {
+      tipVi = generateArticulatoryTip(word, phonetic);
     }
 
     return {
@@ -485,6 +840,95 @@ export class VocabularyService {
         audioUrl: item.referenceAudioUrl ?? null,
       };
     });
+  }
+
+  /**
+   * Generates Speed Matching Quiz Pairs for a Deck.
+   */
+  async getMatchingQuiz(deckId?: string, pairCount: number = 6): Promise<MatchingQuizPair[]> {
+    const items = await this.getItems(deckId);
+    if (items.length === 0) return [];
+    const shuffled = [...items].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, pairCount);
+    return selected.map((item) => ({
+      id: item.id,
+      word: item.word,
+      definitionVi: item.definitionVi,
+      audioUrl: item.referenceAudioUrl,
+    }));
+  }
+
+  /**
+   * Generates Contextual Sentence Practice Items for a Deck.
+   */
+  async getSentencePracticeList(deckId?: string, limit: number = 5): Promise<SentencePracticeItem[]> {
+    const items = await this.getItems(deckId);
+    if (items.length === 0) return [];
+    const shuffled = [...items].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, limit);
+    return selected.map((item) => ({
+      id: item.id,
+      word: item.word,
+      ipa: item.ipa,
+      sentenceEn: item.exampleSentenceEn,
+      sentenceVi: item.exampleSentenceVi,
+      audioUrl: item.referenceAudioUrl,
+    }));
+  }
+
+  /**
+   * Generates Vietnamese-to-English Recall Questions for a Deck.
+   */
+  async getVietnameseToEnglishQuiz(deckId?: string, limit: number = 5): Promise<VietnameseToEnglishQuestion[]> {
+    const items = await this.getItems(deckId);
+    if (items.length === 0) return [];
+    const shuffled = [...items].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, limit);
+    return selected.map((item) => ({
+      id: item.id,
+      targetWord: item.word,
+      ipa: item.ipa,
+      definitionVi: item.definitionVi,
+      partOfSpeech: item.partOfSpeech,
+      hintFirstLetter: item.word.charAt(0).toUpperCase(),
+      audioUrl: item.referenceAudioUrl,
+    }));
+  }
+
+  /**
+   * Retrieves the Top 10 Trouble Words (mispronounced or error prone).
+   */
+  async getTroubleWords(limit: number = 10, userId?: string): Promise<TroubleWordItem[]> {
+    const items = await this.vocabRepo.findTroubleWords(userId ?? this.defaultUserId, limit);
+    return items.map((item) => ({
+      id: item.id,
+      word: item.word,
+      ipa: item.ipa,
+      definitionVi: item.definitionVi,
+      lastMasteryScoreBp: item.lastMasteryScoreBp,
+      masteryAttemptsCount: item.masteryAttemptsCount,
+      audioUrl: item.referenceAudioUrl,
+    }));
+  }
+
+  /**
+   * Manually sets the level of a vocabulary item ("new" | "learning" | "mastered").
+   */
+  async setItemLevel(itemId: string, level: ManualVocabularyLevel): Promise<VocabularyItem> {
+    return this.vocabRepo.updateItemLevel(itemId, level);
+  }
+
+  /**
+   * Deletes a vocabulary item permanently.
+   */
+  async deleteDeck(deckId: string, userId?: string): Promise<boolean> {
+    const uid = userId ?? this.defaultUserId;
+    return this.vocabRepo.deleteDeck(deckId, uid);
+  }
+
+  async deleteItem(itemId: string, userId?: string): Promise<boolean> {
+    const uid = userId ?? this.defaultUserId;
+    return this.vocabRepo.deleteItem(itemId, uid);
   }
 
   async getDecks(userId?: string): Promise<VocabularyDeck[]> {

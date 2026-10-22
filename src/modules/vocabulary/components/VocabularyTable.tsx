@@ -1,21 +1,26 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
+import type { VocabularyItem } from "@/core/dto/vocabulary.dto";
 import { useVocabularyStore } from "../stores/useVocabularyStore";
 
 export function VocabularyTable() {
   const {
+    allItems,
     items,
     isLoading,
     selectedDeckId,
     decks,
-    setSelectedDeckId,
     learnItemNow,
     setCreateDeckModalOpen,
+    updateItemLevelManual,
+    deleteItem,
+    deleteDeck,
   } = useVocabularyStore();
 
   const [levelFilter, setLevelFilter] = useState<"all" | "again" | "good" | "easy">("all");
-  const [dueFilter, setDueFilter] = useState<"all" | "due_today" | "upcoming">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   const handlePlayAudio = (url: string | null | undefined, word: string) => {
@@ -37,11 +42,9 @@ export function VocabularyTable() {
 
   const currentDeck = decks.find((d) => d.id === selectedDeckId);
 
-  // Filter items based on selected filters
+  // Filter items based on selected filters and sort newest first
   const filteredItems = useMemo(() => {
-    const now = new Date().getTime();
-
-    return items.filter((item) => {
+    const result = items.filter((item) => {
       // 1. Text Search Filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
@@ -63,17 +66,12 @@ export function VocabularyTable() {
         if (itemLevel !== levelFilter) return false;
       }
 
-      // 3. Due Date Filter
-      if (dueFilter !== "all") {
-        const nextReviewTime = new Date(item.sm2NextReviewAt).getTime();
-        const isDue = nextReviewTime <= now;
-        if (dueFilter === "due_today" && !isDue) return false;
-        if (dueFilter === "upcoming" && isDue) return false;
-      }
-
       return true;
     });
-  }, [items, searchQuery, levelFilter, dueFilter]);
+
+    // Sắp xếp từ mới nhất lên đầu
+    return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [items, searchQuery, levelFilter]);
 
   return (
     <div className="w-full flex flex-col gap-4 p-6 rounded-2xl border border-border-subtle bg-surface shadow-md">
@@ -81,34 +79,42 @@ export function VocabularyTable() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border-subtle">
         <div>
           <h3 className="text-lg font-bold text-ink flex items-center gap-2">
-            <span>📚</span> Quản Lý Bộ Từ Vựng & Thư Mục
+            <span>📚</span> Quản Lý Bộ Từ Vựng
           </h3>
-          <p className="text-xs text-ink-muted">
-            {currentDeck ? currentDeck.description || "Bộ từ vựng phản xạ" : "Tất cả các từ trong kho lưu trữ"}
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-xs text-ink-muted font-medium">Bộ từ:</label>
-          <select
-            value={selectedDeckId || ""}
-            onChange={(e) => setSelectedDeckId(e.target.value)}
-            className="px-3 py-1.5 rounded-xl bg-surface-raised border border-border-subtle text-ink text-xs focus:border-primary outline-none"
-          >
-            {decks.map((deck) => (
-              <option key={deck.id} value={deck.id}>
-                {deck.name} ({deck.itemCount} từ)
-              </option>
-            ))}
-          </select>
           <button
             type="button"
             onClick={() => setCreateDeckModalOpen(true)}
-            className="px-2.5 py-1.5 rounded-xl bg-primary/10 border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/20 transition flex items-center gap-1"
+            className="px-2.5 py-1.5 rounded-xl bg-primary/10 border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/20 transition flex items-center gap-1 cursor-pointer"
             title="Tạo bộ từ vựng mới"
           >
             <span>+</span> Tạo Bộ
           </button>
+          {selectedDeckId && currentDeck && (
+            <button
+              type="button"
+              onClick={async () => {
+                const count = (allItems || items).filter((i) => i.deckId === selectedDeckId).length;
+                const confirmed = window.confirm(
+                  `Bạn có chắc chắn muốn xóa bộ từ "${currentDeck.name}" cùng ${count} từ vựng trong bộ này không?`
+                );
+                if (confirmed) {
+                  const success = await deleteDeck(selectedDeckId);
+                  if (success) {
+                    toast.success(`Đã xóa bộ từ "${currentDeck.name}" thành công`);
+                  } else {
+                    toast.error(`Không thể xóa bộ từ "${currentDeck.name}"`);
+                  }
+                }
+              }}
+              className="px-2.5 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 text-xs font-semibold hover:bg-red-500/20 transition flex items-center gap-1 cursor-pointer"
+              title={`Xóa bộ từ "${currentDeck.name}"`}
+            >
+              <span>🗑️</span> Xóa Bộ
+            </button>
+          )}
         </div>
       </div>
 
@@ -145,8 +151,8 @@ export function VocabularyTable() {
             onClick={() => setLevelFilter("again")}
             className={`px-2.5 py-1 rounded-lg transition text-xs font-medium flex items-center gap-1 ${
               levelFilter === "again"
-                ? "bg-coral-500 text-white font-bold"
-                : "bg-surface text-coral-400 hover:bg-coral-500/10"
+                ? "bg-red-600 text-white font-bold"
+                : "bg-surface text-red-500 hover:bg-red-500/10"
             }`}
           >
             <span>🔴</span> Again (Cấp 1)
@@ -157,7 +163,7 @@ export function VocabularyTable() {
             className={`px-2.5 py-1 rounded-lg transition text-xs font-medium flex items-center gap-1 ${
               levelFilter === "good"
                 ? "bg-amber-500 text-canvas font-bold"
-                : "bg-surface text-amber-400 hover:bg-amber-500/10"
+                : "bg-surface text-amber-500 hover:bg-amber-500/10"
             }`}
           >
             <span>🟡</span> Good (Cấp 2)
@@ -168,25 +174,11 @@ export function VocabularyTable() {
             className={`px-2.5 py-1 rounded-lg transition text-xs font-medium flex items-center gap-1 ${
               levelFilter === "easy"
                 ? "bg-emerald-500 text-canvas font-bold"
-                : "bg-surface text-emerald-400 hover:bg-emerald-500/10"
+                : "bg-surface text-emerald-500 hover:bg-emerald-500/10"
             }`}
           >
             <span>🟢</span> Easy (Cấp 3)
           </button>
-        </div>
-
-        {/* Due Date Filter */}
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-ink-muted font-medium">Lịch ôn:</span>
-          <select
-            value={dueFilter}
-            onChange={(e) => setDueFilter(e.target.value as "all" | "due_today" | "upcoming")}
-            className="px-2.5 py-1 rounded-lg bg-surface border border-border-subtle text-ink text-xs outline-none focus:border-primary"
-          >
-            <option value="all">Tất cả ngày</option>
-            <option value="due_today">⚡ Đến hạn ôn hôm nay</option>
-            <option value="upcoming">Chưa đến hạn</option>
-          </select>
         </div>
       </div>
 
@@ -208,23 +200,22 @@ export function VocabularyTable() {
                 <th className="p-3">Phiên âm IPA</th>
                 <th className="p-3">Nghĩa tiếng Việt</th>
                 <th className="p-3">Điểm Nói</th>
-                <th className="p-3">Cấp Độ SM-2</th>
-                <th className="p-3">Chu Kỳ</th>
+                <th className="p-3">Cấp Độ</th>
                 <th className="p-3 text-right">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle text-ink">
-              {filteredItems.map((item) => {
+              {filteredItems.map((item: VocabularyItem) => {
                 const scorePercent =
                   item.lastMasteryScoreBp !== null ? Math.round(item.lastMasteryScoreBp / 100) : null;
                 const scoreColor =
                   scorePercent === null
                     ? "text-ink-muted"
                     : scorePercent >= 80
-                    ? "text-emerald-400 font-bold"
+                    ? "text-emerald-500 font-bold"
                     : scorePercent >= 60
-                    ? "text-amber-400 font-semibold"
-                    : "text-coral-400 font-semibold";
+                    ? "text-amber-500 font-semibold"
+                    : "text-red-500 font-semibold";
 
                 // Determine level tag
                 const isEasy = (scorePercent ?? 0) >= 90 || item.sm2IntervalDays >= 7;
@@ -245,7 +236,7 @@ export function VocabularyTable() {
                         <span>{item.word}</span>
                       </button>
                     </td>
-                    <td className="p-3 ipa text-primary font-medium">/{item.ipa}/</td>
+                    <td className="p-3 ipa text-primary font-medium">/{item.ipa.replace(/^\/+|\/+$/g, "")}/</td>
                     <td className="p-3 font-medium max-w-xs truncate" title={item.definitionVi}>
                       {item.definitionVi}
                     </td>
@@ -253,33 +244,16 @@ export function VocabularyTable() {
                       {scorePercent !== null ? `${scorePercent}/100` : "Chưa kiểm tra"}
                     </td>
                     <td className="p-3">
-                      <div className="flex flex-col gap-1 items-start">
-                        {item.isMastered ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[11px] font-medium">
-                            ✓ Đã thuộc
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[11px] font-medium">
-                            ⏳ Đang học
-                          </span>
-                        )}
-                        {isEasy ? (
-                          <span className="text-[10px] text-emerald-400 font-semibold">
-                            🟢 Cấp 3 (Easy)
-                          </span>
-                        ) : isGood ? (
-                          <span className="text-[10px] text-amber-400 font-semibold">
-                            🟡 Cấp 2 (Good)
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-coral-400 font-semibold">
-                            🔴 Cấp 1 (Again)
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3 text-ink-muted">
-                      {item.sm2IntervalDays} ngày
+                      <select
+                        value={isEasy ? "easy" : isGood ? "good" : "again"}
+                        onChange={(e) => updateItemLevelManual(item.id, e.target.value === "again" ? "new" : e.target.value === "good" ? "learning" : "mastered")}
+                        className="text-xs font-bold px-2 py-1.5 rounded-lg border border-border-subtle bg-surface text-ink cursor-pointer outline-none focus:border-primary shadow-2xs"
+                        title="Tự chọn cấp độ"
+                      >
+                        <option value="again">🔴 Again (Cấp 1)</option>
+                        <option value="good">🟡 Good (Cấp 2)</option>
+                        <option value="easy">🟢 Easy (Cấp 3)</option>
+                      </select>
                     </td>
                     <td className="p-3 text-right">
                       <div className="inline-flex items-center gap-1.5 justify-end">
@@ -301,6 +275,25 @@ export function VocabularyTable() {
                           title="Nghe giọng British RP"
                         >
                           <span>🔊 Nghe</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const confirmed = window.confirm(`Bạn có chắc chắn muốn xóa từ "${item.word}" khỏi bộ từ vựng không?`);
+                            if (confirmed) {
+                              const success = await deleteItem(item.id);
+                              if (success) {
+                                toast.success(`Đã xóa từ "${item.word}" thành công`);
+                              } else {
+                                toast.error(`Không thể xóa từ "${item.word}"`);
+                              }
+                            }
+                          }}
+                          className="px-2 py-1 rounded-lg bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-500 text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
+                          title={`Xóa từ "${item.word}"`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Xóa</span>
                         </button>
                       </div>
                     </td>

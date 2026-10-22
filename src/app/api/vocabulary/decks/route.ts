@@ -65,3 +65,35 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 }
+
+export async function DELETE(request: Request): Promise<Response> {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    if (!id) {
+      return NextResponse.json(
+        { error: { code: "MISSING_ID", message: "Thiếu ID bộ từ cần xóa" } },
+        { status: 400 },
+      );
+    }
+
+    const deps = getVocabularyDependencies();
+    const service = new VocabularyService(deps.vocabRepo, deps.defaultUserId);
+    const deleted = await service.deleteDeck(id, deps.defaultUserId);
+
+    if (!deleted) {
+      return NextResponse.json(
+        { error: { code: "NOT_FOUND", message: "Không tìm thấy bộ từ hoặc không thể xóa" } },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ success: true, id }, { status: 200 });
+  } catch (err: unknown) {
+    const error = err as Error;
+    return NextResponse.json(
+      { error: { code: "DELETE_DECK_FAILED", message: error.message } },
+      { status: 500 },
+    );
+  }
+}

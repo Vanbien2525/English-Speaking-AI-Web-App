@@ -7,15 +7,17 @@ import type {
   QuickAddEnrichResponse,
   BatchImportResponse,
   ReviewLevel,
+  TroubleWordItem,
 } from "@/core/dto/vocabulary.dto";
 
-export type PracticeMode = "flashcard" | "listening_quiz" | "spelling_cloze";
+export type PracticeMode = "flashcard" | "sentence" | "spelling_cloze" | "matching" | "vi_to_en" | "listening_quiz";
 export type VocabularyLevelFilter = "all" | "again" | "good" | "easy";
 
 export interface VocabularyState {
   // Data
   decks: VocabularyDeck[];
   selectedDeckId: string | null;
+  allItems: VocabularyItem[];
   items: VocabularyItem[];
   dueItems: VocabularyItem[];
   metrics: VocabularyMetrics;
@@ -27,6 +29,13 @@ export interface VocabularyState {
   lastReviewResult: FlashcardReviewResult | null;
   activePracticeMode: PracticeMode;
   levelFilter: VocabularyLevelFilter;
+  troubleWords: TroubleWordItem[];
+  dailyPracticedCount: number;
+  dailyGoalCount: number;
+  incrementDailyPracticed: () => void;
+  fetchTroubleWords: () => Promise<void>;
+  startTroubleWordsReview: () => Promise<void>;
+  updateItemLevelManual: (itemId: string, level: "new" | "learning" | "mastered") => Promise<void>;
 
   // UI Modals
   isQuickAddOpen: boolean;
@@ -56,7 +65,9 @@ export interface VocabularyState {
   fetchDueItems: () => Promise<void>;
   fetchItems: (deckId?: string) => Promise<void>;
   createDeck: (params: { name: string; description?: string; tags?: string[] }) => Promise<boolean>;
+  deleteDeck: (deckId: string) => Promise<boolean>;
   enrichWord: (word: string) => Promise<QuickAddEnrichResponse | null>;
+  deleteItem: (itemId: string) => Promise<boolean>;
   createItem: (item: {
     deckId: string;
     word: string;
@@ -80,6 +91,7 @@ export interface VocabularyState {
 export const useVocabularyStore = create<VocabularyState>((set, get) => ({
   decks: [],
   selectedDeckId: null,
+  allItems: [],
   items: [],
   dueItems: [],
   metrics: {
@@ -95,6 +107,128 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
   lastReviewResult: null,
   activePracticeMode: "flashcard",
   levelFilter: "all",
+  troubleWords: [],
+  dailyPracticedCount: 0,
+  dailyGoalCount: 15,
+
+  incrementDailyPracticed: () => set((state) => ({ dailyPracticedCount: state.dailyPracticedCount + 1 })),
+
+  fetchTroubleWords: async () => {
+    try {
+      const res = await fetch("/api/vocabulary/trouble-words?limit=10");
+      if (res.ok) {
+        const data = await res.json();
+        set({ troubleWords: data.words || [] });
+      }
+    } catch {
+      // ignore
+    }
+  },
+
+  startTroubleWordsReview: async () => {
+    try {
+      const res = await fetch("/api/vocabulary/trouble-words?limit=10");
+      if (res.ok) {
+        const data = await res.json();
+        const troubleItems = (data.words || []) as TroubleWordItem[];
+        set({
+          troubleWords: troubleItems,
+          dueItems: troubleItems.map((tw) => ({
+            id: tw.id,
+            deckId: "019488a0-7b24-789a-bcde-000000000010",
+            userId: "019488a0-7b24-789a-bcde-000000000001",
+            word: tw.word,
+            ipa: tw.ipa,
+            partOfSpeech: "noun",
+            definitionVi: tw.definitionVi,
+            exampleSentenceEn: `The word "${tw.word}" requires careful pronunciation.`,
+            exampleSentenceVi: `Từ "${tw.word}" cần được luyện phát âm cẩn thận.`,
+            articulatoryTipVi: "Chú ý đặt đúng vị trí môi, răng và luồng hơi.",
+            referenceAudioUrl: tw.audioUrl ?? null,
+            sm2Repetition: 0,
+            sm2IntervalDays: 1,
+            sm2EaseFactorBp: 2500,
+            sm2NextReviewAt: new Date().toISOString(),
+            sm2LastReviewedAt: null,
+            lastMasteryScoreBp: tw.lastMasteryScoreBp,
+            isMastered: false,
+            masteryAttemptsCount: tw.masteryAttemptsCount,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          })),
+          currentCardIndex: 0,
+          isFlipped: false,
+          isReviewing: true,
+          activePracticeMode: "flashcard",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  },
+
+  updateItemLevelManual: async (itemId, level) => {
+    const isMastered = level === "mastered";
+    const sm2IntervalDays = level === "mastered" ? 7 : level === "learning" ? 2 : 1;
+    const lastMasteryScoreBp = level === "mastered" ? 9000 : level === "learning" ? 6500 : null;
+
+    // Optimistic update for instant UI feedback
+    set((state) => {
+      const optimisticUpdate = (it: VocabularyItem) =>
+        it.id === itemId
+          ? {
+              ...it,
+              isMastered,
+              sm2IntervalDays,
+              lastMasteryScoreBp,
+            }
+          : it;
+
+      const newAllItems = state.allItems.map(optimisticUpdate);
+      const newItems = state.items.map(optimisticUpdate);
+      const newDueItems = state.dueItems.map(optimisticUpdate);
+      const masteredCount = newAllItems.filter((it) => it.isMastered).length;
+
+      return {
+        allItems: newAllItems,
+        items: newItems,
+        dueItems: newDueItems,
+        metrics: {
+          ...state.metrics,
+          masteredWordsCount: masteredCount,
+        },
+      };
+    });
+
+    try {
+      const res = await fetch(`/api/vocabulary/items/${itemId}/level`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const updated = data.item as VocabularyItem;
+        set((state) => {
+          const newAllItems = state.allItems.map((it) => (it.id === itemId ? { ...it, ...updated } : it));
+          const newItems = state.items.map((it) => (it.id === itemId ? { ...it, ...updated } : it));
+          const newDueItems = state.dueItems.map((it) => (it.id === itemId ? { ...it, ...updated } : it));
+          const masteredCount = newAllItems.filter((it) => it.isMastered).length;
+          return {
+            allItems: newAllItems,
+            items: newItems,
+            dueItems: newDueItems,
+            metrics: {
+              ...state.metrics,
+              masteredWordsCount: masteredCount,
+            },
+          };
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  },
 
   isQuickAddOpen: false,
   isBatchImportOpen: false,
@@ -105,8 +239,10 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
   errorMessage: null,
 
   setSelectedDeckId: (deckId) => {
-    set({ selectedDeckId: deckId });
-    get().fetchItems(deckId ?? undefined);
+    set({
+      selectedDeckId: deckId,
+      items: deckId ? get().allItems.filter((i) => i.deckId === deckId) : get().allItems,
+    });
   },
 
   setActivePracticeMode: (mode) => set({ activePracticeMode: mode }),
@@ -178,9 +314,10 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
   fetchInitialData: async () => {
     set({ isLoading: true, errorMessage: null });
     try {
-      const [decksRes, dueRes] = await Promise.all([
+      const [decksRes, dueRes, itemsRes] = await Promise.all([
         fetch("/api/vocabulary/decks"),
         fetch("/api/vocabulary/review/due"),
+        fetch("/api/vocabulary/items"),
       ]);
 
       const decksData = decksRes.ok ? await decksRes.json() : { decks: [] };
@@ -195,21 +332,21 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
               retentionRateBp: 0,
             },
           };
+      const itemsData = itemsRes.ok ? await itemsRes.json() : { items: [] };
 
-      const decks = decksData.decks || [];
-      const defaultDeckId = get().selectedDeckId || (decks.length > 0 ? decks[0].id : null);
+      const decks = (decksData.decks || []) as VocabularyDeck[];
+      const allItems = (itemsData.items || []) as VocabularyItem[];
+      const selectedDeckId = get().selectedDeckId;
 
       set({
         decks,
-        selectedDeckId: defaultDeckId,
+        selectedDeckId,
+        allItems,
+        items: selectedDeckId ? allItems.filter((i) => i.deckId === selectedDeckId) : allItems,
         dueItems: dueData.dueItems || [],
         metrics: dueData.metrics || get().metrics,
         isLoading: false,
       });
-
-      if (defaultDeckId) {
-        get().fetchItems(defaultDeckId);
-      }
     } catch (err: unknown) {
       const error = err as Error;
       set({ isLoading: false, errorMessage: error.message });
@@ -233,11 +370,15 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
 
   fetchItems: async (deckId?: string) => {
     try {
-      const url = deckId ? `/api/vocabulary/items?deckId=${encodeURIComponent(deckId)}` : "/api/vocabulary/items";
-      const res = await fetch(url);
+      const res = await fetch("/api/vocabulary/items");
       if (res.ok) {
         const data = await res.json();
-        set({ items: data.items || [] });
+        const allItems = (data.items || []) as VocabularyItem[];
+        const currentSelected = deckId !== undefined ? deckId : get().selectedDeckId;
+        set({
+          allItems,
+          items: currentSelected ? allItems.filter((i) => i.deckId === currentSelected) : allItems,
+        });
       }
     } catch (err: unknown) {
       const error = err as Error;
@@ -264,6 +405,49 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
       const error = err as Error;
       set({ isEnriching: false, errorMessage: error.message });
       return null;
+    }
+  },
+
+  deleteItem: async (itemId: string) => {
+    set({ isLoading: true, errorMessage: null });
+    try {
+      const res = await fetch(`/api/vocabulary/items?id=${encodeURIComponent(itemId)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error?.message || "Lỗi xóa từ vựng");
+      }
+      const targetItem = get().allItems.find((i) => i.id === itemId);
+      const updatedAllItems = get().allItems.filter((i) => i.id !== itemId);
+      const currentSelected = get().selectedDeckId;
+      const updatedItems = currentSelected
+        ? updatedAllItems.filter((i) => i.deckId === currentSelected)
+        : updatedAllItems;
+      const updatedDueItems = get().dueItems.filter((i) => i.id !== itemId);
+      const updatedDecks = get().decks.map((d) => {
+        if (targetItem && d.id === targetItem.deckId) {
+          return { ...d, itemCount: Math.max(0, d.itemCount - 1) };
+        }
+        return d;
+      });
+      set({
+        allItems: updatedAllItems,
+        items: updatedItems,
+        dueItems: updatedDueItems,
+        decks: updatedDecks,
+        metrics: {
+          ...get().metrics,
+          totalWords: updatedAllItems.length,
+          masteredWordsCount: updatedAllItems.filter((i) => i.isMastered).length,
+        },
+        isLoading: false,
+      });
+      return true;
+    } catch (err: unknown) {
+      const error = err as Error;
+      set({ isLoading: false, errorMessage: error.message });
+      return false;
     }
   },
 
@@ -345,6 +529,41 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
     }
   },
 
+  deleteDeck: async (deckId: string) => {
+    set({ isLoading: true, errorMessage: null });
+    try {
+      const res = await fetch(`/api/vocabulary/decks?id=${encodeURIComponent(deckId)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error?.message || "Lỗi xóa bộ từ");
+      }
+      const remainingAll = get().allItems.filter((i) => i.deckId !== deckId);
+      const currentSelected = get().selectedDeckId === deckId ? null : get().selectedDeckId;
+      const remainingDecks = get().decks.filter((d) => d.id !== deckId);
+      const remainingDueItems = get().dueItems.filter((i) => i.deckId !== deckId);
+      set({
+        decks: remainingDecks,
+        allItems: remainingAll,
+        items: currentSelected ? remainingAll.filter((i) => i.deckId === currentSelected) : remainingAll,
+        dueItems: remainingDueItems,
+        selectedDeckId: currentSelected,
+        metrics: {
+          ...get().metrics,
+          totalWords: remainingAll.length,
+          masteredWordsCount: remainingAll.filter((i) => i.isMastered).length,
+        },
+        isLoading: false,
+      });
+      return true;
+    } catch (err: unknown) {
+      const error = err as Error;
+      set({ isLoading: false, errorMessage: error.message });
+      return false;
+    }
+  },
+
   submitSpeakingReview: async (params) => {
     set({ isSubmittingReview: true, errorMessage: null });
     try {
@@ -363,9 +582,26 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
 
       if (res.ok) {
         const reviewResult = data as FlashcardReviewResult;
-        set({ lastReviewResult: reviewResult });
-        // Refresh due items and metrics in background
-        get().fetchDueItems();
+        // In-place update so card does not jump or disappear during review
+        const updateItemState = (item: VocabularyItem): VocabularyItem => {
+          if (item.id !== params.vocabularyItemId) return item;
+          return {
+            ...item,
+            sm2IntervalDays: reviewResult.intervalDaysAfter,
+            sm2Repetition: reviewResult.repetitionCountAfter,
+            lastMasteryScoreBp: reviewResult.pronunciationScoreBp,
+            isMastered: reviewResult.isPassed || item.isMastered,
+            masteryAttemptsCount: item.masteryAttemptsCount + 1,
+          };
+        };
+
+        set((state) => ({
+          lastReviewResult: reviewResult,
+          dueItems: state.dueItems.map(updateItemState),
+          allItems: state.allItems.map(updateItemState),
+          items: state.items.map(updateItemState),
+        }));
+
         return reviewResult;
       }
 

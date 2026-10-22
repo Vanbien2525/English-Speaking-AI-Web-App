@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { convertBlobToWav } from "@/shared/lib/audio-wav";
 import type { CreateAttemptMeta, PronunciationAssessment } from "@/core/dto/shared.dto";
@@ -17,12 +17,31 @@ export function useVocabularyAudioRecorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+  const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
+  const [isPlayingRecordedAudio, setIsPlayingRecordedAudio] = useState(false);
 
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const startTimeRef = useRef<number>(0);
+
+  useEffect(() => {
+    return () => {
+      if (recordedAudioUrl) {
+        URL.revokeObjectURL(recordedAudioUrl);
+      }
+    };
+  }, [recordedAudioUrl]);
+
+  const playRecordedAudio = useCallback(() => {
+    if (!recordedAudioUrl) return;
+    setIsPlayingRecordedAudio(true);
+    const audio = new Audio(recordedAudioUrl);
+    audio.onended = () => setIsPlayingRecordedAudio(false);
+    audio.onerror = () => setIsPlayingRecordedAudio(false);
+    audio.play().catch(() => setIsPlayingRecordedAudio(false));
+  }, [recordedAudioUrl]);
 
   const cleanupStream = useCallback(() => {
     if (mediaStreamRef.current) {
@@ -41,6 +60,10 @@ export function useVocabularyAudioRecorder() {
 
   const startRecording = useCallback(async () => {
     cleanupStream();
+    setRecordedAudioUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
 
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -125,6 +148,11 @@ export function useVocabularyAudioRecorder() {
           try {
             // Convert WebM/Opus blob to standard 16kHz PCM 16-bit Mono WAV in memory
             const wavBlob = await convertBlobToWav(rawBlob, 16000);
+            const userAudioUrl = URL.createObjectURL(wavBlob);
+            setRecordedAudioUrl((prev) => {
+              if (prev) URL.revokeObjectURL(prev);
+              return userAudioUrl;
+            });
 
             // Create standardized assessment metadata
             const metadata: CreateAttemptMeta = {
@@ -191,6 +219,9 @@ export function useVocabularyAudioRecorder() {
     isRecording,
     isEvaluating,
     analyser,
+    recordedAudioUrl,
+    isPlayingRecordedAudio,
+    playRecordedAudio,
     startRecording,
     stopAndAssess,
     cancelRecording: cleanupStream,

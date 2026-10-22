@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import dynamic from "next/dynamic";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import type { ReviewLevel } from "@/core/dto/vocabulary.dto";
 import type { PronunciationAssessment } from "@/core/dto/shared.dto";
@@ -9,22 +8,14 @@ import { useVocabularyStore } from "../stores/useVocabularyStore";
 import { useVocabularyAudioRecorder } from "../hooks/useVocabularyAudioRecorder";
 import { VocabWaveform } from "./VocabWaveform";
 
-// Lazy-load 3D WebGL Canvas to preserve high client performance
-const VocabOralCanvas = dynamic(
-  () => import("../three/VocabOralCanvas").then((m) => m.VocabOralCanvas),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-44 rounded-xl bg-surface-raised animate-pulse flex items-center justify-center text-xs text-ink-muted">
-        Đang khởi tạo mô hình 3D...
-      </div>
-    ),
-  },
-);
+
 
 export function FlashcardReviewDeck() {
   const {
     dueItems,
+    allItems,
+    selectedDeckId,
+    decks,
     currentCardIndex,
     isFlipped,
     lastReviewResult,
@@ -32,28 +23,54 @@ export function FlashcardReviewDeck() {
     flipCard,
     nextCard,
     prevCard,
-    resetReviewSession,
     submitSpeakingReview,
   } = useVocabularyStore();
 
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [show3dModel, setShow3dModel] = useState(true);
   const [assessedCardId, setAssessedCardId] = useState<string | null>(null);
   const [rawScoreBp, setRawScoreBp] = useState<number | null>(null);
   const [lastAudioDurationMs, setLastAudioDurationMs] = useState<number>(1200);
   const [latestAssessment, setLatestAssessment] = useState<PronunciationAssessment | null>(null);
+  const [selectedLevel, setSelectedLevel] = useState<ReviewLevel | null>(null);
+  const [prevCardIndex, setPrevCardIndex] = useState(currentCardIndex);
+  const [prevDeckId, setPrevDeckId] = useState(selectedDeckId);
+
+  // Active items based on selected deck
+  const activeDeckItems = useMemo(() => {
+    if (!selectedDeckId) {
+      return dueItems.length > 0 ? dueItems : allItems;
+    }
+    const filtered = allItems.filter((i) => i.deckId === selectedDeckId);
+    return filtered;
+  }, [dueItems, allItems, selectedDeckId]);
+
+  if (selectedDeckId !== prevDeckId) {
+    setPrevDeckId(selectedDeckId);
+    useVocabularyStore.setState({ currentCardIndex: 0, lastReviewResult: null, isFlipped: false });
+  }
+
+  // React recommended pattern: Adjust state when currentCardIndex changes during render
+  if (currentCardIndex !== prevCardIndex) {
+    setPrevCardIndex(currentCardIndex);
+    setSelectedLevel(null);
+    setLatestAssessment(null);
+    setAssessedCardId(null);
+  }
 
   const {
     isRecording,
     isEvaluating,
     analyser,
+    recordedAudioUrl,
+    isPlayingRecordedAudio,
+    playRecordedAudio,
     startRecording,
     stopAndAssess,
   } = useVocabularyAudioRecorder();
 
 
 
-  const currentItem = dueItems[currentCardIndex];
+  const currentItem = activeDeckItems[currentCardIndex];
   const lastAssessedScoreBp = assessedCardId === currentItem?.id ? rawScoreBp : null;
 
   const playWebSpeech = useCallback((word: string) => {
@@ -166,6 +183,7 @@ export function FlashcardReviewDeck() {
     });
 
     if (reviewResult) {
+      setSelectedLevel(level);
       if (level === "again") {
         toast.error("🔴 Again: Thẻ giữ ở Cấp 1, sẽ ôn lại ngay trong phiên này!");
       } else if (level === "good") {
@@ -173,28 +191,21 @@ export function FlashcardReviewDeck() {
       } else {
         toast.success(`🟢 Easy: Cấp 3 (+25 XP). Giãn cách hẳn ${reviewResult.intervalDaysAfter} ngày!`);
       }
-      setTimeout(() => {
-        nextCard();
-      }, 600);
+      // Giữ nguyên thẻ hiện tại theo yêu cầu người dùng, không tự động chuyển thẻ
     }
   };
 
-  if (!currentItem) {
+  if (!currentItem || activeDeckItems.length === 0) {
+    const currentDeck = decks.find((d) => d.id === selectedDeckId);
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-border-subtle bg-surface">
-        <span className="text-5xl mb-4">🎉</span>
-        <h3 className="text-2xl font-bold text-ink mb-2">
-          Tuyệt vời! Bạn đã hoàn thành tất cả thẻ cần ôn hôm nay
+        <span className="text-5xl mb-4">📚</span>
+        <h3 className="text-xl font-bold text-ink mb-2">
+          {currentDeck ? `Bộ từ "${currentDeck.name}" chưa có từ vựng nào!` : "Kho từ vựng hiện đang trống!"}
         </h3>
-        <p className="text-ink-muted max-w-md mb-6">
-          Thuật toán SM-2 đã tự động xếp lịch giãn cách theo chất lượng phát âm của bạn. Hãy quay lại vào ngày mai hoặc thêm từ mới!
+        <p className="text-xs text-ink-muted max-w-md mb-6">
+          Vui lòng chọn bộ từ khác ở mục &quot;Bộ từ&quot; phía trên hoặc thêm từ mới để bắt đầu luyện tập.
         </p>
-        <button
-          onClick={resetReviewSession}
-          className="px-6 py-2.5 rounded-xl bg-primary text-canvas font-semibold hover:brightness-110 transition shadow"
-        >
-          Xem lại từ đầu
-        </button>
       </div>
     );
   }
@@ -208,20 +219,14 @@ export function FlashcardReviewDeck() {
       <div className="w-full flex items-center justify-between px-2 text-sm text-ink-muted">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-ink">
-            Thẻ {currentCardIndex + 1} / {dueItems.length}
+            Thẻ {currentCardIndex + 1} / {activeDeckItems.length}
           </span>
           <span className="text-xs px-2 py-0.5 rounded-full bg-surface-raised border border-border-subtle">
             Chu kỳ hiện tại: {currentItem.sm2IntervalDays} ngày
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShow3dModel(!show3dModel)}
-            className="text-xs font-medium px-2.5 py-1 rounded-lg bg-surface-raised border border-border-subtle hover:border-primary/50 text-ink transition"
-          >
-            {show3dModel ? "Ẩn mô hình 3D" : "Hiện mô hình 3D"}
-          </button>
-          <span className="text-xs text-ink-muted">Nhấn [Space] để lật</span>
+          <span className="text-xs text-ink-muted">Nhấn [Space] để lật thẻ</span>
         </div>
       </div>
 
@@ -229,7 +234,7 @@ export function FlashcardReviewDeck() {
       <div className="w-full h-1.5 bg-surface-raised rounded-full overflow-hidden">
         <div
           className="h-full bg-primary transition-all duration-300"
-          style={{ width: `${((currentCardIndex + 1) / dueItems.length) * 100}%` }}
+          style={{ width: `${((currentCardIndex + 1) / (activeDeckItems.length || 1)) * 100}%` }}
         />
       </div>
 
@@ -274,26 +279,11 @@ export function FlashcardReviewDeck() {
                 {currentItem.word}
               </h2>
               <span className="ipa text-2xl text-primary font-medium tracking-wide">
-                /{currentItem.ipa}/
+                /{currentItem.ipa.replace(/^\/+|\/+$/g, "")}/
               </span>
             </div>
 
-            {/* 3D Anatomical Vocal Tract Canvas */}
-            {show3dModel && (
-              <div
-                className="my-3 w-full"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <VocabOralCanvas word={currentItem.word} />
-              </div>
-            )}
 
-            {/* Articulatory Tip Teaser */}
-            <div className="text-center">
-              <p className="text-xs text-ink-muted italic">
-                {currentItem.articulatoryTipVi || "Nhấp vào thẻ hoặc bấm phím Cách để xem định nghĩa & ví dụ"}
-              </p>
-            </div>
           </div>
 
           {/* BACK OF CARD */}
@@ -303,7 +293,7 @@ export function FlashcardReviewDeck() {
                 <span className="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded bg-surface border border-border-subtle text-ink-muted">
                   {currentItem.partOfSpeech || "Định nghĩa"}
                 </span>
-                <span className="ipa text-sm text-primary font-medium">/{currentItem.ipa}/</span>
+                <span className="ipa text-sm text-primary font-medium">/{currentItem.ipa.replace(/^\/+|\/+$/g, "")}/</span>
               </div>
               <button
                 type="button"
@@ -352,75 +342,27 @@ export function FlashcardReviewDeck() {
               )}
             </div>
 
-            <div className="text-center text-xs text-ink-muted">
-              Bắt buộc phát âm đúng ≥ 80 điểm bên dưới để thẻ được tính là thuộc
-            </div>
+
           </div>
         </div>
       </div>
 
       {/* Speaking-Verified Mastery Microphone Action Bar */}
       <div className="w-full flex flex-col items-center gap-3 p-5 rounded-2xl border border-border-subtle bg-surface">
-        <div className="text-center">
-          <h4 className="text-sm font-bold text-ink flex items-center justify-center gap-1.5">
-            <span>🎙️</span> Cơ Chế &ldquo;Phát Âm Đúng Mới Tính Là Thuộc&rdquo;
-          </h4>
-          <p className="text-xs text-ink-muted mt-0.5">
-            Bấm mic đọc to từ <strong className="text-primary">&ldquo;{currentItem.word}&rdquo;</strong>. Hệ thống yêu cầu điểm phát âm ≥ 80/100 để thăng hạng SM-2.
-          </p>
-        </div>
-
         {/* Real-time Waveform display */}
         <VocabWaveform analyser={analyser} isRecording={isRecording} />
-
-        {/* Native RP Pronunciation Comparison Card */}
-        <div className="w-full p-4 rounded-xl bg-surface-raised border border-border-subtle flex flex-col gap-2.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-ink flex items-center gap-1.5">
-              <span>🎯</span> Đối Chiếu Âm Vị Mẫu Bản Xứ (British RP)
-            </span>
-            <button
-              type="button"
-              onClick={handlePlayAudio}
-              className="text-primary hover:underline font-semibold flex items-center gap-1"
-            >
-              <span>🔊</span> Nghe Mẫu Bản Xứ
-            </button>
-          </div>
-          <div className="flex items-center justify-between bg-surface p-3 rounded-lg border border-border-subtle/70">
-            <div>
-              <span className="text-[11px] text-ink-muted uppercase block">Phiên âm chuẩn đích:</span>
-              <span className="ipa text-lg font-bold text-primary tracking-wider">
-                /{currentItem.ipa.replace(/^\/|\/$/g, "")}/
-              </span>
-            </div>
-            <div className="text-right">
-              <span className="text-[11px] text-ink-muted uppercase block">Điểm phát âm đạt chuẩn:</span>
-              <span className="text-sm font-semibold text-ink">≥ 80/100 (8000 bp)</span>
-            </div>
-          </div>
-          {lastReviewResult && !isPassed && (
-            <p className="text-xs text-coral-400 bg-coral-500/10 p-2 rounded border border-coral-500/30">
-              ⚠️ <strong>Lưu ý cấu âm:</strong> Phát âm cần chính xác từng nguyên âm ngắn/dài và bật rõ âm cuối. Tránh kéo dài nguyên âm ngắn (ví dụ đọc /ʊ/ trong &quot;good&quot; thành /uː/).
-            </p>
-          )}
-        </div>
 
         {/* Review Result Banner */}
         {lastReviewResult && (
           <div
-            className={`w-full p-3.5 rounded-xl border text-center text-xs transition-all ${
+            className={`w-full p-3 rounded-xl border text-center text-xs font-bold transition-all ${
               isPassed
-                ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-400"
-                : "bg-coral-500/10 border-coral-500/40 text-coral-400"
+                ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-500"
+                : "bg-red-500/10 border-red-500/40 text-red-500"
             }`}
           >
-            <div className="font-bold text-sm mb-1">
-              {isPassed ? "✅ ĐÃ THUỘC & ĐẠT CHUẨN PHÁT ÂM" : "❌ CHƯA ĐẠT CHUẨN (< 80 ĐIỂM)"}
-            </div>
-            <p className="leading-relaxed">{lastReviewResult.feedbackVi}</p>
-            <div className="mt-1 text-[11px] opacity-80">
-              Điểm số: {scorePercent}/100 · Chu kỳ SM-2 mới: {lastReviewResult.intervalDaysAfter} ngày
+            <div className="font-bold text-sm">
+              {isPassed ? "✅ ĐÃ THUỘC & ĐẠT CHUẨN PHÁT ÂM (≥ 80 ĐIỂM)" : "❌ CHƯA ĐẠT CHUẨN (< 80 ĐIỂM)"}
             </div>
           </div>
         )}
@@ -503,20 +445,17 @@ export function FlashcardReviewDeck() {
           </div>
         )}
 
-        {/* 3-Level Anki Rating Buttons */}
+        {/* 3-Level Anki Rating Buttons with Active Border State */}
         <div className="w-full mt-1">
-          <div className="text-xs font-semibold text-ink-muted mb-2 text-center uppercase tracking-wider">
-            Chọn Cấp Độ Đánh Giá Thuật Toán SM-2:
-          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full">
             {/* 🔴 Again */}
             <button
               type="button"
               onClick={() => handleSelectLevel("again")}
               disabled={isSubmittingReview || isRecording}
-              className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
-                lastReviewResult && !isPassed
-                  ? "bg-coral-500/20 border-coral-500 ring-2 ring-coral-500/50"
+              className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                selectedLevel === "again" || (lastReviewResult && !isPassed && selectedLevel === null)
+                  ? "bg-coral-500/20 border-coral-500 ring-3 ring-coral-500/70 shadow-md"
                   : "bg-surface-raised border-border-subtle hover:border-coral-500/60 hover:bg-coral-500/10"
               }`}
             >
@@ -532,9 +471,9 @@ export function FlashcardReviewDeck() {
               type="button"
               onClick={() => handleSelectLevel("good")}
               disabled={isSubmittingReview || isRecording}
-              className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
-                lastReviewResult && isPassed && (scorePercent ?? 0) < 90
-                  ? "bg-amber-500/20 border-amber-500 ring-2 ring-amber-500/50"
+              className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                selectedLevel === "good" || (lastReviewResult && isPassed && (scorePercent ?? 0) < 90 && selectedLevel === null)
+                  ? "bg-amber-500/20 border-amber-500 ring-3 ring-amber-500/70 shadow-md"
                   : "bg-surface-raised border-border-subtle hover:border-amber-500/60 hover:bg-amber-500/10"
               }`}
             >
@@ -550,9 +489,9 @@ export function FlashcardReviewDeck() {
               type="button"
               onClick={() => handleSelectLevel("easy")}
               disabled={isSubmittingReview || isRecording}
-              className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
-                lastReviewResult && isPassed && (scorePercent ?? 0) >= 90
-                  ? "bg-emerald-500/20 border-emerald-500 ring-2 ring-emerald-500/50"
+              className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                selectedLevel === "easy" || (lastReviewResult && isPassed && (scorePercent ?? 0) >= 90 && selectedLevel === null)
+                  ? "bg-emerald-500/20 border-emerald-500 ring-3 ring-emerald-500/70 shadow-md"
                   : "bg-surface-raised border-border-subtle hover:border-emerald-500/60 hover:bg-emerald-500/10"
               }`}
             >
@@ -565,12 +504,36 @@ export function FlashcardReviewDeck() {
           </div>
         </div>
 
+        {/* User Voice Playback Button if recorded */}
+        {recordedAudioUrl && (
+          <div className="w-full flex justify-center pt-2">
+            <button
+              type="button"
+              onClick={playRecordedAudio}
+              disabled={isPlayingRecordedAudio}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-700 hover:bg-emerald-100 text-xs font-bold transition active:scale-95 shadow-xs cursor-pointer"
+              title="Nghe lại bản thu âm của chính bạn"
+            >
+              <span>🎧</span>
+              <span>{isPlayingRecordedAudio ? "Đang phát giọng bạn..." : "Nghe lại bản ghi của mình"}</span>
+            </button>
+          </div>
+        )}
+
         {/* Microphone Button Controls */}
         <div className="flex items-center gap-4 mt-1">
           <button
-            onClick={prevCard}
+            onClick={() => {
+              if (currentCardIndex > 0) {
+                useVocabularyStore.setState({
+                  currentCardIndex: currentCardIndex - 1,
+                  isFlipped: false,
+                  lastReviewResult: null,
+                });
+              }
+            }}
             disabled={currentCardIndex === 0 || isRecording || isEvaluating}
-            className="p-3 rounded-xl bg-surface-raised border border-border-subtle hover:border-primary/40 disabled:opacity-40 text-ink transition"
+            className="p-3 rounded-xl bg-surface-raised border border-border-subtle hover:border-primary/40 disabled:opacity-40 text-ink transition cursor-pointer"
             title="Thẻ trước [Phím mũi tên trái]"
           >
             ←
@@ -579,31 +542,41 @@ export function FlashcardReviewDeck() {
           <button
             onClick={handleToggleRecord}
             disabled={isEvaluating || isSubmittingReview}
-            className={`relative flex items-center justify-center gap-2.5 px-7 py-3 rounded-2xl font-bold transition-all shadow-lg ${
+            className={`relative flex items-center justify-center gap-2.5 px-8 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-lg cursor-pointer ${
               isRecording
-                ? "bg-coral-500 text-white animate-pulse"
+                ? "bg-red-600 hover:bg-red-700 text-white animate-pulse"
                 : "bg-primary text-canvas hover:brightness-110 active:scale-95"
             }`}
           >
             {isRecording ? (
               <>
-                <span className="w-3 h-3 rounded-sm bg-white" />
-                <span>Dừng & Chấm Điểm</span>
+                <span className="w-3.5 h-3.5 rounded-xs bg-white" />
+                <span className="text-white font-extrabold text-sm tracking-wider">STOP</span>
               </>
             ) : isEvaluating || isSubmittingReview ? (
               <span>Đang đánh giá phát âm...</span>
             ) : (
               <>
                 <span className="text-lg">🎙️</span>
-                <span>Bấm Mic Để Nói ({currentItem.word})</span>
+                <span>Bấm Mic để nói</span>
               </>
             )}
           </button>
 
           <button
-            onClick={nextCard}
-            disabled={isRecording || isEvaluating}
-            className="p-3 rounded-xl bg-surface-raised border border-border-subtle hover:border-primary/40 disabled:opacity-40 text-ink transition"
+            onClick={() => {
+              if (currentCardIndex + 1 < activeDeckItems.length) {
+                useVocabularyStore.setState({
+                  currentCardIndex: currentCardIndex + 1,
+                  isFlipped: false,
+                  lastReviewResult: null,
+                });
+              } else {
+                toast.success("Bạn đã xem hết các thẻ trong bộ từ này!");
+              }
+            }}
+            disabled={currentCardIndex + 1 >= activeDeckItems.length || isRecording || isEvaluating}
+            className="p-3 rounded-xl bg-surface-raised border border-border-subtle hover:border-primary/40 disabled:opacity-40 text-ink transition cursor-pointer"
             title="Thẻ tiếp theo [Phím mũi tên phải]"
           >
             →

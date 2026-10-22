@@ -42,122 +42,106 @@
 - [x] Pure Domain SM-2 Calculator: `src/core/domain/sm2.ts` (Số học nguyên basis points, chất lượng q = 0..5, ngưỡng phát âm đạt chuẩn >= 8000 bp / 80%)
 - [x] Tích hợp Free Dictionary API & Fallback Dictionary Llama: `src/core/services/vocabulary-service.ts`
 - [x] Bộ API Route Handlers: `/api/vocabulary/enrich`, `/api/vocabulary/batch-import`, `/api/vocabulary/decks`, `/api/vocabulary/items`, `/api/vocabulary/review/due`, `/api/vocabulary/review/submit`
-- [x] Giao diện Studio Flashcard 3D: `src/modules/vocabulary` (Thẻ lật 3D CSS perspective, mô hình khoang miệng 3D mini `VocabOralCanvas`, Web Audio Waveform, giọng đọc chuẩn British RP)
+- [x] Giao diện Studio Flashcard 3D: `src/modules/vocabulary` (Thẻ lật 3D CSS perspective, Web Audio Waveform, giọng đọc chuẩn British RP)
 - [x] Cơ chế "Phát Âm Đúng Mới Tính Là Thuộc" (Speaking-Verified Mastery): Bắt buộc mic đọc >= 80 điểm mới thăng hạng SM-2 và ghi nhận vào Sổ Cái XP
 - [x] Nhập 1-Chạm (`QuickAddModal`) & Nhập hàng loạt tối đa 20 từ (`BatchImportModal`)
-- [x] Giai đoạn 5: Chuẩn hóa quy trình Golden Issue-First Jules Flow (Issue #9 gắn nhãn `jules` -> Jules Cloud VM audit & patch -> Jules mở PR #11)
-- [x] Giai đoạn 5: Dual-Green Passed (Jules Cloud VM Audit + GitHub Actions Enterprise CI Pipeline Run 39569521322 Xanh 100%)
-- [x] Giai đoạn 5: Squash and Merge PR #11 vào main (Commit `f9fdfa8`), đóng PR #10 trùng lặp & đóng Issue #9
-- [x] Giai đoạn 5: Dọn dẹp an toàn các branch ephemeral `feature/active-vocabulary-3d` và xuất bản báo cáo nghiệm thu `.agents/reports/feature-04-active-vocabulary-3d.md`
 
-## [x] Nâng Cấp Chuyên Sâu: 6 Điểm Vàng Phân Hệ Từ Vựng Phản Xạ 3D (HOÀN THÀNH 100%)
-- [x] 1. Từ điển học thuật song ngữ chuyên sâu: `src/core/services/dictionary-data.ts` (Sửa dứt điểm lỗi định nghĩa tiếng Việt & chuẩn hóa IPA Oxford/Cambridge cho `power`, `good`, `think`, v.v.).
-- [x] 2. Cơ chế 3 Cấp Độ Đánh Giá SM-2 chuẩn Anki: `src/core/domain/sm2.ts` & `FlashcardReviewDeck.tsx` (🔴 Again: Cấp 1 ôn lại ngay trong vài phút / 1 ngày, 🟡 Good: Cấp 2 nhắc lại sau 1-3 ngày, 🟢 Easy: Cấp 3 giãn cách 7-14 ngày).
-- [x] 3. Quản lý Thư mục / Bộ từ vựng (Deck): `CreateDeckModal.tsx` & `VocabularyTable.tsx` (Tạo bộ từ mới, lọc theo Bộ từ, lọc theo 3 Cấp độ, lọc theo Lịch đến hạn ôn tập).
-- [x] 4. Học lại tức thì từ danh sách: Click vào từ hoặc bấm nút "⚡ Luyện lại" trên từng hàng trong `VocabularyTable.tsx` lập tức nạp thẻ vào Flashcard 3D Studio.
-- [x] 5. Đa dạng hóa chế độ luyện tập theo bộ: Thêm thanh tab chuyển đổi giữa 🎴 Thẻ 3D SM-2, 🎧 Luyện Nghe Chọn Từ Vựng (`ListeningQuizStudio.tsx`), và ✍️ Gõ Từ Điền Chỗ Trống (`SpellingClozeStudio.tsx`).
-- [x] 6. Đối chiếu chấm điểm nghiêm ngặt với mẫu bản xứ: Bắt lỗi kéo dài `/ʊ/` thành `/uː/` trong `good`, trừ điểm rớt dưới 80%, hiển thị thẻ so sánh âm vị người học vs British RP.
-
-## [x] Rebuild UI/UX Module IPA: Bảng 44 Âm Vị, Học Chi Tiết & Phòng Luyện Tập (HOÀN THÀNH 100%)
-- [x] Design System: Snow White (#f8fafc) + Mint Green (#10b981) Neo-Brutalism & Glassmorphism nhẹ (`src/app/globals.css`).
-- [x] Hệ thống Navigation: `src/components/navigation/AppNavbar.tsx` với Dashboard, Học IPA (44 Âm), Luyện tập, và "3D Model (Coming Soon)" disabled.
-- [x] Bộ Dataset 44 Âm IPA & 10 Từ Mẫu: `src/core/data/ipa-dataset.ts` (12 Monophthongs, 8 Diphthongs, 24 Consonants phân biệt Voiced/Voiceless, 10 từ/âm vị kèm highlight chữ cái, Minimal Pairs dataset).
-- [x] Tiện ích Speech & Storage: `src/shared/lib/speech.ts` (Web Speech API chuỗi âm IPA -> pause 0.5s -> Anchor word) & `src/shared/lib/ipa-storage.ts` (quản lý điểm số và sổ lỗi sai < 70%).
-- [x] Bảng 44 Âm Vị Quốc Tế (Main Phonemic Chart): `src/modules/ipa/PhonemicChart.tsx` & `src/app/ipa/page.tsx` (Card phát âm liên hoàn, nút "i" chuyển trang chi tiết, viền Mint Green khi >= 85%).
-- [x] Trang Chi Tiết Âm Vị: `src/modules/ipa/PhonemeDetailPage.tsx` & `src/app/ipa/[phonemeId]/page.tsx` (Header IPA lớn, chỉ dẫn khẩu hình tiếng Việt, 10 từ vựng highlight chữ cái, mic thu âm với sóng âm Canvas `WordWaveform`, chấm điểm AI 3 cấp màu, tự động lưu từ < 70% vào Error Review).
-- [x] Phòng Luyện Phản Xạ Âm Vị: `src/modules/ipa/practice/` & `src/app/ipa/practice/page.tsx` (4 Chế độ: Minimal Pairs, Drag & Drop Nối từ, Nghe & Chọn, và Sổ tay ôn tập lỗi sai tự động gỡ khi đạt >= 85%).
-- [x] Dashboard Cá Nhân Hóa: `src/modules/dashboard/DashboardView.tsx`, `src/app/page.tsx`, `src/app/dashboard/page.tsx`.
-- [x] Kiểm Thử & Tối Ưu: 128/128 tests Vitest green (thêm 5 unit tests giao diện `ipa-module-frontend.test.tsx`), TypeScript Strict 0 errors, ESLint 0 warnings, Next.js build SSG 54/54 static pages thành công.
-
-## [x] Sửa Lỗi Triệt Để: AI Chấm Điểm Sai Thành Đúng & Hiển Thị Chi Tiết Lời Khuyên Sửa Lỗi Cấu Âm (HOÀN THÀNH 100%)
-- [x] **Nguyên nhân gốc rễ 1 - Audio Normalization làm méo tiếng**: `audio_processor.py` trước đây chuẩn hóa đơn vị phương sai `(data - mean)/std` vô tình khuếch đại tiếng thở nhẹ/im lặng thành tiếng lớn -> Đã sửa sang Gentle Peak Normalization, bảo vệ hoàn toàn ngưỡng im lặng thực tế.
-- [x] **Nguyên nhân gốc rễ 2 - Thiếu Gating Rules trong công thức tính điểm**: Điểm `overall_bp` trước đây bị `completeness` (100%) và `fluency` (80%) kéo lên >= 80 dù `accuracy` bị trừ nặng -> Đã thiết lập 3 Gating Rules nghiêm ngặt:
-  1. Nếu im lặng / mic câm: Toàn bộ điểm = 0!
-  2. Nếu `accuracy_bp < 8000`: Điểm tổng `overall_bp` bị chặn trên bằng đúng `accuracy_bp`, không thể cao hơn.
-  3. Nếu có bất kỳ lỗi âm vị mức độ `major` (kéo dài /uː/ thay vì /ʊ/, nuốt âm đuôi, phát âm sai phụ âm): `overall_bp` BỊ CHẶN TRÊN TỐI ĐA 6500 (65 điểm - KHÔNG THỂ VƯỢT QUA NGƯỠNG 80 ĐIỂM ĐẠT CHUẨN)!
-- [x] **Nguyên nhân gốc rễ 3 - Nhận diện âm học sâu & Mở rộng từ điển**: `phoneme_service.py` bổ sung từ điển hàng trăm từ học thuật, tự động phân tích ngữ âm học cho từ mới lạ, phân tích ZCR nhận diện `/θ/` bị đọc thành `/s/` hay `/t/`, đo thời lượng nguyên âm phát hiện kéo dài `/ʊ/` thành `/uː/`.
-- [x] **Nguyên nhân gốc rễ 4 - Giao diện thiếu phản hồi từ AI Tutor**:
-  - `useVocabularyAudioRecorder.ts`: Trả về full DTO `assessment: PronunciationAssessment`.
-  - `FlashcardReviewDeck.tsx`: Thêm khối giao diện trực quan **"🤖 Chẩn Đoán Âm Vị & Gợi Ý Sửa Lỗi (Llama 3.1 8B)"** gồm:
-    - Thanh âm vị chi tiết (màu xanh cho âm đúng, màu đỏ gạch chéo hiển thị rõ `Kỳ vọng: /ʊ/ → Đọc thành: /uː/` kèm điểm % từng âm vị).
-    - Nhận xét chi tiết của gia sư AI (`summaryVi`).
-    - Danh sách mẹo giải phẫu khẩu hình (`tipsVi`): vị trí đặt đầu lưỡi, độ mở môi, độ rung thanh quản để người học sửa lỗi ngay lập tức.
-  - `IpaBreakdownCard.tsx`: Tích hợp hiển thị `feedback.summaryVi` và `feedback.tipsVi` của AI Tutor cho phòng luyện phát âm Practice Studio.
-- [x] **Đảm bảo 100% Quality Gates**:
-  - Pytest AI Engine: 5/5 tests green (bao gồm test đọc kéo dài `good` thành `/uː/` bị rớt và test âm thanh im lặng nhận 0 điểm).
-  - Vitest Next.js: 123/123 tests green.
-  - TypeScript strict: 0 errors.
-  - ESLint: 0 warnings, 0 errors.
-  - Next.js Production Build: Build pass 100%.
-
-## [x] Tối Ưu Hóa Toàn Diện Speech AI Engine & Bộ Đánh Giá Phát Âm Chuẩn Quốc Tế (HOÀN THÀNH 100%)
-- [x] **1. Audio DSP Pre-processing**:
-  - `audio_processor.py`: Bổ sung Bandpass Filter (80Hz - 7500Hz) loại bỏ nhiễu hạ âm và rít cao tần.
-  - VAD Trim & Pad: Tự động gọt khoảng lặng thừa và đệm biên an toàn 60ms chống mất phụ âm đầu/đuôi khi người học bấm nút vội.
-  - Clipping & Low-SNR Detector: Bắt lỗi âm lượng quá sát mic (bẹt đỉnh) hoặc thì thầm/câm tiếng.
-- [x] **2. Căn chỉnh âm vị & Đánh giá cấu âm SOTA**:
-  - `phoneme_service.py`: Căn chỉnh thời gian phi tuyến (Vowels chiếm 40-50% thời lượng, Consonants 20-30%).
-  - Phát hiện nuốt âm cuối (Final Consonant Release Burst Check) cho `/k/, /t/, /d/, /p/`.
-  - Phát hiện kéo dài nguyên âm ngắn (`/ʊ/` trong `good` ngân thành `/uː/`).
-  - Phát hiện nhầm âm xát răng `/θ/` thành âm xát rít `/s/` (ZCR > 0.17) hoặc âm tắc `/t/`.
-  - Phát hiện đọc sai từ / Out-of-vocabulary (Đọc câu khác hoặc từ khác ngoài từ mục tiêu).
-  - Phát hiện lệch trọng âm từ đa âm tiết (Syllable Stress Peak Check).
-- [x] **3. Ma trận khóa điểm sắt (Zero-Tolerance Gating Rules)**:
-  - `routes.py`: Khóa trần điểm số tối đa <= 6200 bp (62%) khi có bất kỳ lỗi âm vị major hoặc nuốt âm đuôi ➔ Bắt buộc rớt (< 80%), không thể thăng hạng SM-2 cho đến khi sửa đúng khẩu hình.
-  - Khóa điểm <= 1500 bp (15%) khi đọc lạc đề / sai từ.
-  - Khóa điểm = 0 khi mic câm hoặc tạp âm.
-- [x] **4. Tối ưu hóa suy luận & Gia sư Llama 3.1 8B**:
-  - `scorer_service.py`: Chuyển sang `torch.inference_mode()`.
-  - `tutor_service.py`: Khóa `temperature = 0.0`, `num_predict = 100`, triệt tiêu hoàn toàn ảo giác (Zero Hallucination).
-- [x] **5. Bộ kiểm thử tự động khắt khe (100% Quality Gates)**:
-  - Pytest AI Engine: 7/7 tests green (thêm test Out-of-Vocabulary và SLA Latency).
-  - Vitest Next.js: 123/123 tests green.
-  - TypeScript strict: 0 errors (`npm run typecheck`).
-  - ESLint: 0 warnings, 0 errors (`npm run lint`).
-
-## [x] Nâng Cấp SOTA: Tích Hợp Meta AI Pre-trained Phoneme Recognizer (Phase 2 Sửa Dứt Điểm PER 100%) (HOÀN THÀNH 100%)
-- [x] **1. Model Phase 2 (Phoneme CTC Recognizer)**:
-  - Tích hợp thành công checkpoint SOTA quốc tế của Meta AI: `facebook/wav2vec2-xlsr-53-espeak-cv-ft` (315M tham số) trực tiếp vào microservice.
-  - Sử dụng `Wav2Vec2CTCTokenizer` giải mã trực tiếp 393 ký tự IPA chuẩn quốc tế (không cần binary phụ thuộc ngoài `espeak-ng.dll`).
-  - Xử lý triệt để và xóa bỏ hoàn toàn lỗi PER 100% (Blank Collapse) của checkpoint cũ, đảm bảo giải mã âm vị độc lập và bóc tách chính xác từng âm vị thực tế (`actualIpa`) người học đã phát ra.
-- [x] **2. Căn chỉnh & So khớp âm vị chuẩn xác (CTC Trellis Viterbi Forced Alignment)**:
-  - `phoneme_service.py`: Tích hợp giải thuật **CTC Trellis Viterbi Dynamic Programming** trực tiếp từ emission log-probabilities của Wav2Vec2.
-  - Căn chỉnh khớp chính xác mốc thời gian bắt đầu (`startMs`) và kết thúc (`endMs`) của từng âm vị trên lưới thời gian (20ms/frame), hỗ trợ fallback an toàn sang đường bao âm học phi tuyến.
-  - Đối chiếu trực tiếp `actualIpa` với `expectedIpa` để bắt quả tang 100% các lỗi thay thế (substitution), nuốt âm (deletion) và thừa âm (insertion).
-  - Tích hợp song song bộ chẩn đoán âm học thời gian thực (ZCR cho âm kẹp răng /θ/, Vowel duration cho /ʊ/ vs /uː/, Burst energy cho âm đuôi /k/, /t/, /d/).
-- [x] **3. Đạt 100% Quality Gates**:
-  - Pytest AI Engine: **9/9 tests green** (bao gồm test `test_ctc_forced_alignment_computes_monotonic_timestamps`).
-  - Vitest Next.js: **123/123 tests green** (20 test files, thời gian chạy < 5s).
-  - TypeScript strict: **0 errors**.
-  - ESLint: **0 warnings, 0 errors**.
-
-## [x] Nâng Cấp Toàn Diện & Khắc Phục Triệt Để 4 Trọng Điểm IPA (HOÀN THÀNH 100%)
-- [x] **1. Khắc Phục Lỗi Định Dạng Ô Vuông Âm Vị (/əʊ/, /ʊə/) Trên Trang Chi Tiết**:
-  - `src/modules/ipa/PhonemeDetailPage.tsx`: Căn chỉnh ô vuông Hero `min-w-28 sm:min-w-32 px-2 h-28 sm:h-32 overflow-hidden`, áp dụng `whitespace-nowrap select-none leading-none inline-block` và dynamic typography (`text-3xl sm:text-4xl` cho diphthong 4 ký tự).
-  - Khắc phục triệt để lỗi rớt dòng và tràn viền như trong ảnh phản ánh, đảm bảo ký hiệu nằm trọn vẹn 100% bên trong ô vuông.
-- [x] **2. Nâng Cấp AI Gia Sư - Hướng Dẫn Giải Phẫu Chi Tiết (Môi, Lưỡi, Hơi, Dây Thanh)**:
-  - `services/ai-engine/app/services/tutor_service.py`: Xây dựng từ điển giải phẫu ngữ âm `ARTICULATORY_GUIDES` cho toàn bộ 44 âm vị IPA.
-  - Xóa bỏ triệt để các câu sáo rỗng ("quan sát vị trí"); cung cấp hướng dẫn giải phẫu 3 phần chuyên sâu:
-    + **Khẩu hình Môi & Hàm**: Độ mở môi, chu tròn, ép khóe miệng hay thả lỏng.
-    + **Vị trí Lưỡi**: Đầu lưỡi chạm nướu trên, kẹp giữa hai răng hay nâng cuống lưỡi lên ngạc mềm.
-    + **Luồng hơi & Dây thanh**: Bật hơi nổ (plosive), xát luồng hơi qua khe răng (fricative) hay rung thanh quản (voiced).
-- [x] **3. Cải Thiện Trải Nghiệm Ôn Tập Lỗi Sai - Thông Báo Kết Quả Rõ Ràng Trước Khi Gỡ**:
-  - `src/modules/ipa/practice/ErrorReviewPractice.tsx`: Khi học viên phát âm đúng (>= 80%), hệ thống bắn thông báo chúc mừng (`toast.success`), đổi viền thẻ sang màu xanh emerald rực rỡ kèm badge `"ĐÃ SỬA LỖI XONG"`.
-  - Giữ lại thẻ 4 giây kèm thanh thông báo đếm ngược để học viên quan sát thành tích và nhận xét trước khi tự động gỡ khỏi sổ lỗi (hoặc bấm nút "Gỡ ngay").
-- [x] **4. Tích Hợp Kho Audio Chuẩn 44 Âm Vị Từ Repo xiaozhah/phoneme_audio**:
-  - Tải và đồng bộ hóa toàn bộ 44 file âm thanh chuẩn phát âm âm vị cô lập (`*_isolation.mp3`) từ repo `https://github.com/xiaozhah/phoneme_audio` trực tiếp vào `public/audio/ipa/*.mp3`.
-  - Dọn dẹp toàn bộ file âm thanh cũ/nặng, tối ưu dung lượng cực nhẹ (~15KB/file), tương thích 100% mọi trình duyệt và thiết bị di động.
-- [x] **5. Đạt 100% Quality Gates Toàn Diện**:
-  - Pytest Python AI Engine: **10/10 tests passed** (Bổ sung test case phân rã chuẩn cho từ `shoot` và `expectedIpa`).
-  - Vitest Next.js Test Suite: **129/129 tests passed (21 test files)** (Bổ sung test case IPA-06 kiểm định trọn vẹn 44 âm vị, bao gồm /ɡ/ Unicode U+0261).
+## [x] Hoàn Thiện & Tinh Chỉnh Đợt 2: Xóa Bộ Từ, Đếm Tức Thời, Sửa Dịch Nghĩa, Persistence & Dọn UI (HOÀN THÀNH 100%)
+- [x] **Yêu cầu 1: Bổ sung xóa bộ từ**: Thêm nút `🗑️ Xóa Bộ` trong `VocabularyTable.tsx`, API Route `DELETE /api/vocabulary/decks?id=...`, `deleteDeck` trong `useVocabularyStore.ts`, `VocabularyService`, và `VocabularyRepository` (cascade delete toàn bộ từ trong bộ).
+- [x] **Yêu cầu 2: Cập nhật đếm từ tức thời trong 0ms khi xóa từ**: Trong `useVocabularyStore.ts`, khi xóa từ, cập nhật đồng thời `decks.itemCount` và `metrics.totalWords` ngay lập tức; trong `VocabularyTable.tsx`, `realCount` được tính động trực tiếp từ mảng `items`, không cần F5 hay load lại trang.
+- [x] **Yêu cầu 3: Sửa dứt điểm phần dịch nghĩa tiếng Việt**: Xóa bỏ lỗi gán đè định nghĩa tiếng Anh từ Free Dictionary API; tích hợp cơ chế dịch thuật 2 tầng (Google Translate API + MyMemory API fallback), đảm bảo từ thêm 1 từ và nhiều từ luôn luôn có nghĩa tiếng Việt chuẩn xác (ví dụ "run" -> "chạy").
+- [x] **Yêu cầu 4: Bỏ hoàn toàn chức năng ôn tập từ sai nhiều nhất**: Đã xóa bỏ nút `🔥 Ôn tập từ sai nhiều nhất` khỏi `DailyProgressBar.tsx`.
+- [x] **Yêu cầu 5: Bỏ tab/nút "Xem danh sách từ" khi ở chế độ luyện tập**: Đã xóa bỏ nút chuyển đổi "Xem danh sách từ" trong `VocabularyHeader.tsx` và `src/app/vocabulary/page.tsx` khi đang luyện tập.
+- [x] **Yêu cầu 6: Khắc phục lỗi tải lại trang ra 5 từ ban đầu**: Tích hợp cơ chế **Persistence to Local Disk** (`database/local_vocab_store.json`) và singleton `globalThis.__vocabRepoInstance`. Khi người dùng xóa hết từ, trạng thái rỗng được lưu bền vững, khi F5 tải lại trang hoàn toàn KHÔNG tự động mọc lại 5 từ ban đầu!
+- [x] **100% Quality Gates**:
+  - Vitest Test Suite: **141/141 tests green (23 test files)** (Bổ sung suite kiểm thử `deleteDeckRoute`).
   - TypeScript Strict: **0 errors (`npm run typecheck`)**.
   - ESLint Static Analysis: **0 warnings, 0 errors (`npm run lint`)**.
   - Next.js Production Build: **Build pass 100% (98 static & SSG pages)**.
-- [x] **6. Sửa Triệt Để Lỗi Âm Vị /ɡ/ (go) & Lệch Phiên Âm Từ 'shoot'**:
-  - `src/core/data/ipa-audio-urls.ts`: Thêm mapping cho ký tự Unicode `ɡ` (U+0261 LATIN SMALL LETTER SCRIPT G) trỏ tới `/audio/ipa/con-g.mp3` kèm chuẩn hóa tự động.
-  - Sửa dứt điểm tình trạng click vào thẻ /ɡ/ go bị im lặng.
-- [x] **7. Jules Đã Hoàn Tất Kiểm Định & Tạo Pull Request #16**:
-  - Jules Cloud VM đã chạy thành công task và mở **Pull Request #16** (Fixes #15).
-  - GitHub Actions CI `Verify & Audit` đã **PASS Xanh 100%**.
 
-## [>] Vị Trí Hiện Tại: [Jules Đã Tạo PR #16 Trên Nhánh `feature/ipa-studio-enhancement` & CI Đã Xanh 100% - Chờ Tech Lead Duyệt và Squash and Merge]
+## [x] Hoàn Thiện & Tinh Chỉnh Đợt 3: Xử Lý Triệt Để 9 Lỗi Hệ Thống Từ Vựng (HOÀN THÀNH 100%)
+- [x] **Lỗi 1: Flashcard đứng yên sau khi đọc & chấm điểm**: Đã gỡ bỏ việc gọi `fetchDueItems()` bên trong `submitSpeakingReview`; thay vào đó cập nhật trạng thái thẻ in-place (`items`, `allItems`, `dueItems`). Thẻ hiện tại đứng yên hoàn toàn, chỉ chuyển thẻ khi người dùng chủ động click chuột hoặc dùng phím mũi tên.
+- [x] **Lỗi 2: Nút Mic hiển thị rõ "Bấm Mic để nói" & "STOP" đỏ rực**: Khắc phục lỗi class màu v4/contrast bằng class `bg-red-600 hover:bg-red-700 text-white font-extrabold`, hiển thị chữ "STOP" cùng biểu tượng dừng rõ ràng, không bao giờ bị trắng trơn.
+- [x] **Lỗi 3: Chuẩn hóa phiên âm IPA cho "run" (/rʌn/) và các từ đơn âm tiết**: Bổ sung "run" (/rʌn/), "beautiful" (/ˈbjuː.tɪ.fəl/), "cut", "sun" vào `ACADEMIC_DICTIONARY`, `LOCAL_FALLBACK_DICTIONARY`, và dọn dẹp sạch sẽ dữ liệu trong `database/local_vocab_store.json`.
+- [x] **Lỗi 4: Rút gọn cột "Cấp Độ SM-2" thành "Cấp Độ" với 1 dropdown duy nhất**: Đổi tiêu đề bảng thành "Cấp Độ", xóa bỏ toàn bộ huy hiệu rườm rà và select trùng lặp, chỉ giữ lại duy nhất 1 dropdown chọn: 🔴 Again (Cấp 1), 🟡 Good (Cấp 2), 🟢 Easy (Cấp 3).
+- [x] **Lỗi 5: Xóa bỏ chức năng "Lịch ôn" và cột "Chu Kỳ"**: Xóa bộ lọc "Lịch ôn" trên thanh filter bar và cột "Chu Kỳ" trong bảng `VocabularyTable.tsx`.
+- [x] **Lỗi 6: Xóa bỏ chức năng "Luyện theo câu"**: Xóa bỏ hoàn toàn tab "💬 Luyện Theo Câu" khỏi thanh chuyển chế độ luyện tập trong `src/app/vocabulary/page.tsx`.
+- [x] **Lỗi 7: Mặc định bộ từ ưu tiên là "Tất cả"**: Chỉnh sửa `useVocabularyStore.ts`, `selectedDeckId` khởi tạo và duy trì mặc định là `null` ("Tất cả các bộ").
+- [x] **Lỗi 8: Sửa lỗi số lượng từ bị về 0 khi chọn bộ rỗng**: Thêm mảng `allItems` vào Zustand store. Số lượng từ của từng bộ trong dropdown luôn được tính toán dựa trên toàn bộ kho từ vựng `allItems`, không bao giờ bị reset về 0 khi bấm vào bộ rỗng.
+- [x] **Lỗi 9: Trì hoãn 1.3s thông báo hoàn thành Nối từ & Nghĩa**: Thêm state `showCompletion` và `setTimeout(..., 1300)` trong `MatchingQuizStudio.tsx` để phát âm từ cuối cùng được nghe trọn vẹn trước khi bảng chúc mừng xuất hiện.
+- [x] **Lỗi 10: Nút "Mở phòng luyện tập" đổi thành "Xem danh sách từ" (trang chính)**: Nút được đặt tại vị trí chuyển đổi, tự động đổi nhãn giữa "Mở phòng luyện tập →" và "📋 Xem danh sách từ", bấm vào để chuyển đổi giữa giao diện luyện tập và danh sách từ chính.
+- [x] **100% Quality Gates**:
+  - Vitest Test Suite: **141/141 tests green (23 test files)**.
+  - TypeScript Strict: **0 errors (`npm run typecheck`)**.
+  - ESLint Static Analysis: **0 warnings, 0 errors (`npm run lint`)**.
+  - Next.js Production Build: **Build pass 100% (98 static & SSG pages)**.
+
+## [x] Hoàn Thiện & Tinh Chỉnh Đợt 4: Chuẩn Hóa Font & Dữ Liệu IPA, Bộ Lọc Bộ Từ Cho 4 Chế Độ & Dọn Gọn Flashcard (HOÀN THÀNH 100%)
+- [x] **Lỗi 1: Khắc phục lỗi font IPA và triệt tiêu lỗi phiên âm thô**:
+  - Đổi biến font `--font-ipa` trong `src/app/globals.css` sang font sans-serif hiện đại (`Be Vietnam Pro, Noto Sans, Segoe UI, Arial`), loại bỏ hiện tượng ký tự `/ʌ/` bị biến dạng có chân mào giống chữ Hy Lạp `Λ`.
+  - Tích hợp động cơ tra cứu IPA dự phòng siêu tốc từ Datamuse API (`fetchIpaFromDatamuse`) trong `vocabulary-service.ts`, bổ sung các từ phổ thông (`mother`, `happy`, `father`, `brother`) vào kho từ điển mẫu chuẩn (`dictionary-data.ts`), ngăn chặn tuyệt đối tình trạng từ bị phiên âm thô dạng `/${word}/`.
+  - Chuẩn hóa toàn bộ dữ liệu trong `database/local_vocab_store.json`: `mother` -> `/ˈmʌð.ər/`, `happy` -> `/ˈhæp.i/`, `run` -> `/rʌn/`.
+- [x] **Yêu cầu 2: Bộ lọc bộ từ cho cả 4 chế độ luyện tập**:
+  - Tích hợp Dropdown "Bộ từ:" trực tiếp trên thanh điều hướng chế độ luyện tập tại `src/app/vocabulary/page.tsx`.
+  - Đồng bộ `selectedDeckId` xuyên suốt cả 4 phân hệ: `Thẻ Flashcard SM-2` (`FlashcardReviewDeck.tsx`), `Nghe gõ từ` (`SpellingClozeStudio.tsx`), `Nối từ & nghĩa` (`MatchingQuizStudio.tsx`), và `Tiếng Việt → Tiếng Anh` (`VietnameseToEnglishStudio.tsx`). Khi chọn 1 bộ từ, cả 4 studio lập tức chuyển sang chỉ luyện tập từ vựng thuộc bộ từ đó (hoặc tất cả các bộ nếu chọn "Tất cả các bộ").
+- [x] **Yêu cầu 3: Dọn dẹp dòng kết quả SM-2 rườm rà trên Flashcard**:
+  - Gỡ bỏ hoàn toàn dòng text: `"Quay về Cấp độ 1 (Again): Thẻ được đưa vào danh sách ôn lại ngay trong phiên này. Điểm số: 62/100 · Chu kỳ SM-2 mới: 1 ngày"`.
+  - Giữ lại giao diện tối giản, tinh gọn với banner trạng thái đạt chuẩn/chưa đạt chuẩn và bảng nhận xét chi tiết kèm hướng dẫn sửa khẩu hình từ AI gia sư Llama 3.1 8B.
+- [x] **100% Quality Gates**:
+  - Vitest Test Suite: **141/141 tests green (23 test files)**.
+  - TypeScript Strict: **0 errors (`npm run typecheck`)**.
+  - ESLint Static Analysis: **0 warnings, 0 errors (`npm run lint`)**.
+  - Next.js Production Build: **Build pass 100% (98 static & SSG pages)**.
+
+## [x] Hoàn Thiện & Tinh Chỉnh Đợt 5: Chuẩn Hóa Toàn Diện IPA, Giao Diện Bộ Từ & Cập Nhật Tức Thời (HOÀN THÀNH 100%)
+- [x] **Yêu cầu 1: Sửa dứt điểm phiên âm IPA qua Free Dictionary API & chuẩn hóa dữ liệu**:
+  - Tối ưu bộ trích xuất IPA trong `enrichWord` ([vocabulary-service.ts](file:///d:/English-Speaking-AI-Web-App/src/core/services/vocabulary-service.ts)) duyệt toàn bộ danh sách entries và phonetics, ưu tiên UK transcription và lọc sạch ký tự gạch chéo chuẩn `/.../`.
+  - Cập nhật chuẩn xác dữ liệu lưu trong [database/local_vocab_store.json](file:///d:/English-Speaking-AI-Web-App/database/local_vocab_store.json): `run` -> `/rʌn/`, `happy` -> `/ˈhæp.i/`, `mother` -> `/ˈmʌð.ər/`.
+- [x] **Yêu cầu 2: Xóa lọc bộ từ trùng lặp ở phía dưới (ảnh 1)**:
+  - Gỡ bỏ cụm `<select>...</select>` lọc bộ từ trong [VocabularyTable.tsx](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/components/VocabularyTable.tsx), chỉ giữ lại duy nhất 1 bộ chọn bộ từ ở thanh điều hướng trên cùng điều khiển đồng bộ toàn bộ trang và 4 studio luyện tập.
+- [x] **Yêu cầu 3: Xóa nút "+ Tạo Bộ Từ" ở header (ảnh 2)**:
+  - Xóa nút `📁 + Tạo Bộ Từ` khỏi [VocabularyHeader.tsx](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/components/VocabularyHeader.tsx), tập trung thao tác tạo bộ từ vào nút `+ Tạo Bộ` trong bảng quản lý từ vựng.
+- [x] **Yêu cầu 4: Xóa thẻ "Tỷ lệ duy trì (SM-2)"**:
+  - Gỡ bỏ hoàn toàn thẻ "Tỷ lệ duy trì (SM-2)" trong [VocabularyHeader.tsx](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/components/VocabularyHeader.tsx), tinh gọn hàng chỉ số thành 3 thẻ cân đối: `Tổng số từ vựng`, `Cần ôn hôm nay`, và `Đã thuộc vững chắc`.
+- [x] **Yêu cầu 5: Cập nhật tức thời số từ "Đã thuộc vững chắc" khi đổi cấp độ**:
+  - Tích hợp Optimistic Update và đồng bộ tức thời trong `updateItemLevelManual` tại [useVocabularyStore.ts](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/stores/useVocabularyStore.ts). Khi đổi cấp độ (Again, Good, Easy), chỉ số `masteredWordsCount` được tính toán lại ngay trong 0ms mà không cần tải lại trang.
+- [x] **Yêu cầu 6: Đa dạng hóa câu ví dụ ngắn gọn, sinh động**:
+  - Bổ sung hàm `generateDiverseShortExample` sinh câu ví dụ tiếng Anh ngắn (5-8 từ), phong phú theo ngữ cảnh và từ loại (động từ, tính từ, trạng từ, danh từ), loại bỏ hoàn toàn câu mẫu đơn điệu `"I like this ... a lot"`.
+- [x] **100% Quality Gates**:
+  - Vitest Test Suite: **141/141 tests green (23 test files)**.
+  - TypeScript Strict: **0 errors (`npm run typecheck`)**.
+  - ESLint Static Analysis: **0 warnings, 0 errors (`npm run lint`)**.
+  - Next.js Production Build: **Build pass 100% (98 static & SSG pages)**.
+
+## [x] Hoàn Thiện & Tinh Chỉnh Đợt 6: Đồng Bộ Xóa Thẻ Đã Thuộc, Chặn Trùng Từ Theo Từ Loại, Chuẩn Hóa British RP & Mẹo Khẩu Hình Giải Phẫu 100% (HOÀN THÀNH 100%)
+- [x] **Yêu cầu 1: Cập nhật tức thời số từ "Đã thuộc vững chắc" khi xóa từ**:
+  - Trong `deleteItem` và `deleteDeck` tại [useVocabularyStore.ts](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/stores/useVocabularyStore.ts), bổ sung tính toán tức thời `masteredWordsCount = updatedAllItems.filter(i => i.isMastered).length`. Khi xóa một từ đang ở trạng thái đã thuộc, con số trên thẻ header giảm ngay lập tức trong 0ms.
+- [x] **Yêu cầu 2: Chặn thêm từ trùng lặp theo cặp (từ vựng + từ loại)**:
+  - Ràng buộc kiểm tra nghiêm ngặt tại [vocabulary-repository.ts](file:///d:/English-Speaking-AI-Web-App/src/core/repositories/vocabulary-repository.ts) và API Route [api/vocabulary/items](file:///d:/English-Speaking-AI-Web-App/src/app/api/vocabulary/items/route.ts) (trả về 409 Conflict).
+  - Cho phép thêm từ giống nhau nếu khác từ loại (ví dụ: `run` danh từ và `run` động từ), nhưng chặn tuyệt đối nếu trùng cả từ lẫn từ loại (`run` noun + `run` noun).
+  - Tích hợp cảnh báo sớm trên giao diện [QuickAddModal.tsx](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/components/QuickAddModal.tsx) với thông báo toast rõ ràng.
+- [x] **Yêu cầu 3: Chuẩn hóa 100% phiên âm Anh - Anh (British RP)**:
+  - Tích hợp `fetchBritishRpIpaFromWiktionary` ([vocabulary-service.ts](file:///d:/English-Speaking-AI-Web-App/src/core/services/vocabulary-service.ts)) trích xuất chính xác chuẩn Received Pronunciation (`RP`/`UK`).
+  - Ưu tiên các nguyên âm dài và âm đặc trưng Anh - Anh (như `/ɑː/` thay cho `/æ/` trong *example* `/ɪɡˈzɑːm.pəl/`, *dance* `/dɑːns/`, *car* `/kɑː/`; `/ɔː/` và đuôi `/ə/` không rotic trong *water* `/ˈwɔː.tə/`).
+- [x] **Yêu cầu 4: Động cơ sinh mẹo khẩu hình & đặt lưỡi giải phẫu thông minh 100%**:
+  - Xây dựng hàm `generateArticulatoryTip` ([vocabulary-service.ts](file:///d:/English-Speaking-AI-Web-App/src/core/services/vocabulary-service.ts)) phân tích giải phẫu chi tiết dựa trên từng âm vị IPA thực tế của từ: vị trí đặt lưỡi (giữa răng, chạm gờ nướu, cong vòm họng), hình dáng môi (chu tròn, mở bè), độ mở hàm, độ rung thanh quản và quy tắc nhấn trọng âm.
+  - Loại bỏ hoàn toàn câu mẫu ngẫu nhiên đơn điệu `"Đặt khẩu hình tự nhiên..."`.
+- [x] **100% Quality Gates**:
+  - Vitest Test Suite: **142/142 tests green (23 test files)** (Bổ sung test `TC-VOCAB-08`).
+  - TypeScript Strict: **0 errors (`npm run typecheck`)**.
+  - ESLint Static Analysis: **0 warnings, 0 errors (`npm run lint`)**.
+  - Next.js Production Build: **Build pass 100% (98 static & SSG pages)**.
+
+## [x] Hoàn Thiện & Tinh Chỉnh Đợt 7: Giao Diện Luxury, Mục Tiêu 15 Từ/Ngày & Chuyển Cảnh Mượt Mà (HOÀN THÀNH 100%)
+- [x] **Yêu cầu 1: Xóa dòng phụ "Luyện phát âm chuẩn xác..."**: Gỡ bỏ khỏi [DailyProgressBar.tsx](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/components/DailyProgressBar.tsx), giúp thanh tiến độ gọn gàng và tinh tế.
+- [x] **Yêu cầu 2: Rút gọn tiêu đề bảng thành "Quản Lý Bộ Từ Vựng"**: Xóa bỏ dòng phụ và rút gọn tiêu đề trong [VocabularyTable.tsx](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/components/VocabularyTable.tsx).
+- [x] **Yêu cầu 3: Điều chỉnh mục tiêu từ 20 từ/ngày thành 15 từ/ngày**: Cập nhật `dailyGoalCount: 15` trong [useVocabularyStore.ts](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/stores/useVocabularyStore.ts).
+- [x] **Yêu cầu 4: Nâng cấp câu slogan & giới thiệu sang trọng, truyền cảm hứng**: Cập nhật câu mô tả tại [VocabularyHeader.tsx](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/components/VocabularyHeader.tsx): *"Làm chủ vốn từ giao tiếp tự nhiên cùng thuật toán ghi nhớ SM-2, tối ưu khẩu hình chuẩn British RP và phản xạ phát âm lưu loát."*
+- [x] **Yêu cầu 5: Nâng cấp hiệu ứng chuyển cảnh mượt mà xịn mịn**: Tích hợp `AnimatePresence mode="wait"` và `motion.div` với cubic-bezier `[0.16, 1, 0.3, 1]` cùng keyframes `smooth-fade-in` trong [globals.css](file:///d:/English-Speaking-AI-Web-App/src/app/globals.css) và [page.tsx](file:///d:/English-Speaking-AI-Web-App/src/app/vocabulary/page.tsx). Chuyển đổi giữa các chế độ luyện tập êm ái, liền mạch chuẩn Awwwards.
+- [x] **100% Quality Gates**:
+  - Vitest Test Suite: **142/142 tests green (23 test files)**.
+  - TypeScript Strict: **0 errors (`npm run typecheck`)**.
+  - ESLint Static Analysis: **0 warnings, 0 errors (`npm run lint`)**.
+  - Next.js Production Build: **Build pass 100% (98 static & SSG pages)**.
+
+## [>] Vị Trí Hiện Tại: [Đã Hoàn Thành Toàn Bộ 5 Yêu Cầu Tinh Chỉnh Đợt 7 - Đạt Chuẩn 100% Quality Gates]

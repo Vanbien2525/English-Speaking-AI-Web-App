@@ -180,3 +180,82 @@ export type FlashcardReviewResult = z.infer<typeof FlashcardReviewResultSchema>;
 export type VocabularyMetrics = z.infer<typeof VocabularyMetricsSchema>;
 export type ListeningQuizQuestion = z.infer<typeof ListeningQuizQuestionSchema>;
 export type ClozeSpellingQuestion = z.infer<typeof ClozeSpellingQuestionSchema>;
+
+
+// -----------------------------------------------------------------------------
+// Default Decks & Manual Level Classification
+// -----------------------------------------------------------------------------
+export const DEFAULT_DECK_NAMES = ["Từ mới", "Đang học", "Đã thuộc"] as const;
+export type DefaultDeckName = (typeof DEFAULT_DECK_NAMES)[number];
+
+export const ManualVocabularyLevelSchema = z.enum(["new", "learning", "mastered"]);
+export type ManualVocabularyLevel = z.infer<typeof ManualVocabularyLevelSchema>;
+
+export const UpdateItemLevelRequestSchema = z.object({
+  level: ManualVocabularyLevelSchema,
+});
+export type UpdateItemLevelRequest = z.infer<typeof UpdateItemLevelRequestSchema>;
+
+// -----------------------------------------------------------------------------
+// Interactive Practice Modes (Matching, Sentence Practice, Vi-to-En & Trouble Words)
+// -----------------------------------------------------------------------------
+export const MatchingQuizPairSchema = z.object({
+  id: z.string(),
+  word: z.string(),
+  definitionVi: z.string(),
+  audioUrl: z.string().nullable().optional(),
+});
+
+export const MatchingQuizResponseSchema = z.object({
+  pairs: z.array(MatchingQuizPairSchema),
+});
+
+export const SentencePracticeItemSchema = z.object({
+  id: z.string(),
+  word: z.string(),
+  ipa: z.string(),
+  sentenceEn: z.string(),
+  sentenceVi: z.string(),
+  audioUrl: z.string().nullable().optional(),
+});
+
+export const SentencePracticeResponseSchema = z.object({
+  sentences: z.array(SentencePracticeItemSchema),
+});
+
+export const VietnameseToEnglishQuestionSchema = z.object({
+  id: z.string(),
+  targetWord: z.string(),
+  ipa: z.string(),
+  definitionVi: z.string(),
+  partOfSpeech: z.string(),
+  hintFirstLetter: z.string(),
+  audioUrl: z.string().nullable().optional(),
+});
+
+export const VietnameseToEnglishResponseSchema = z.object({
+  questions: z.array(VietnameseToEnglishQuestionSchema),
+});
+
+export const TroubleWordItemSchema = z.object({
+  id: z.string(),
+  word: z.string(),
+  ipa: z.string(),
+  definitionVi: z.string(),
+  lastMasteryScoreBp: z.number().nullable(),
+  masteryAttemptsCount: z.number(),
+  audioUrl: z.string().nullable().optional(),
+});
+
+export const TroubleWordsResponseSchema = z.object({
+  words: z.array(TroubleWordItemSchema),
+});
+
+export type MatchingQuizPair = z.infer<typeof MatchingQuizPairSchema>;
+export type MatchingQuizResponse = z.infer<typeof MatchingQuizResponseSchema>;
+export type SentencePracticeItem = z.infer<typeof SentencePracticeItemSchema>;
+export type SentencePracticeResponse = z.infer<typeof SentencePracticeResponseSchema>;
+export type VietnameseToEnglishQuestion = z.infer<typeof VietnameseToEnglishQuestionSchema>;
+export type VietnameseToEnglishResponse = z.infer<typeof VietnameseToEnglishResponseSchema>;
+export type TroubleWordItem = z.infer<typeof TroubleWordItemSchema>;
+export type TroubleWordsResponse = z.infer<typeof TroubleWordsResponseSchema>;
