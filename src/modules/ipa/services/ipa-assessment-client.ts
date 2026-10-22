@@ -36,8 +36,9 @@ export async function assessWordPronunciation(params: {
   phonemeSymbol: string;
   phonemeUuid?: string;
   highlightPart: string;
+  expectedIpa?: string;
 }): Promise<WordAssessmentResponse> {
-  const { audioBlob, durationMs, word, phonemeSymbol, phonemeUuid, highlightPart } = params;
+  const { audioBlob, durationMs, word, phonemeSymbol, phonemeUuid, highlightPart, expectedIpa } = params;
 
   // 1. Safe audio duration clamp (500ms <= duration <= 15000ms as required by backend schema)
   const safeDurationMs = Math.max(500, Math.min(15000, Math.round(durationMs)));
@@ -50,6 +51,7 @@ export async function assessWordPronunciation(params: {
     audioDurationMs: safeDurationMs,
     accent: "en-GB-RP" as const,
     targetText: word,
+    expectedIpa: expectedIpa || undefined,
   };
 
   const formData = new FormData();

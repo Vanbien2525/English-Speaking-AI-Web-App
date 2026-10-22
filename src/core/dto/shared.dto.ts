@@ -108,6 +108,7 @@ export const CreateAttemptMetaSchema = z.object({
   audioDurationMs: z.int().min(1).max(60_000),
   accent: AccentCodeSchema,
   targetText: z.string().optional(),
+  expectedIpa: z.string().optional(),
 });
 
 // -----------------------------------------------------------------------------

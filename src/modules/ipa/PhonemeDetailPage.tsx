@@ -117,6 +117,7 @@ export function PhonemeDetailPage({ phoneme }: PhonemeDetailPageProps) {
           phonemeSymbol: phoneme.symbol,
           phonemeUuid: phoneme.uuid,
           highlightPart: word.highlightPart,
+          expectedIpa: word.ipa,
         });
 
         const score = evaluation.score;

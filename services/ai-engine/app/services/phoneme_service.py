@@ -96,6 +96,61 @@ COMMON_WORD_IPA: dict[str, list[str]] = {
     "zenith": ["z", "e", "n", "ɪ", "θ"],
 }
 
+# Auto-load comprehensive curriculum lexicon (310+ words from ipa-dataset.ts)
+LEXICON_PATH = Path(__file__).resolve().parent.parent / "data" / "parsed_ipa_lexicon.json"
+if LEXICON_PATH.exists():
+    try:
+        with open(LEXICON_PATH, "r", encoding="utf-8") as _f:
+            _loaded_lex = json.load(_f)
+            COMMON_WORD_IPA.update(_loaded_lex)
+            logger.info(f"Loaded {len(_loaded_lex)} IPA vocabulary words from curriculum lexicon.")
+    except Exception as _lex_err:
+        logger.warning(f"Could not load parsed_ipa_lexicon.json: {_lex_err}")
+
+# Standard 44 IPA phonemes sorted by descending length for greedy parsing
+STANDARD_PHONEMES = [
+    # Multi-character vowels with length marks
+    "iː", "uː", "ɜː", "ɔː", "ɑː",
+    "i:", "u:", "ɜ:", "ɔ:", "ɑ:",
+    # 2-character diphthongs and affricates
+    "ɪə", "eɪ", "ʊə", "ɔɪ", "əʊ", "eə", "aɪ", "aʊ",
+    "tʃ", "dʒ", "oʊ",
+    # Single-character vowels & consonants
+    "ɪ", "e", "æ", "ə", "ʌ", "ʊ", "ɒ",
+    "p", "b", "t", "d", "k", "ɡ", "g", "f", "v",
+    "θ", "ð", "s", "z", "ʃ", "ʒ", "h", "m", "n", "ŋ", "l", "r", "w", "j",
+]
+STANDARD_PHONEMES.sort(key=len, reverse=True)
+
+
+def parse_ipa_to_phonemes(ipa_str: str) -> list[str]:
+    """Parse raw IPA transcription string (e.g. '/ʃuːt/' or 'tʃɜːtʃ') into discrete phoneme tokens."""
+    import re
+    cleaned = ipa_str.strip("/ []")
+    cleaned = re.sub(r"[ˈˌ\.\-\s]", "", cleaned)
+    cleaned = cleaned.replace("ː", ":")
+
+    tokens: list[str] = []
+    i = 0
+    while i < len(cleaned):
+        matched = False
+        for phone in STANDARD_PHONEMES:
+            p_clean = phone.replace("ː", ":")
+            if cleaned[i : i + len(p_clean)] == p_clean:
+                norm_phone = phone.replace(":", "ː")
+                if norm_phone == "g":
+                    norm_phone = "ɡ"
+                tokens.append(norm_phone)
+                i += len(p_clean)
+                matched = True
+                break
+        if not matched:
+            ch = cleaned[i]
+            if ch not in ["ˈ", "ˌ", " "]:
+                tokens.append(ch)
+            i += 1
+    return tokens
+
 
 def decompose_word_to_ipa(word: str) -> list[str]:
     """Phonetic decomposition fallback for words not in the static dictionary."""
@@ -372,6 +427,7 @@ class Wav2Vec2PhonemeService:
         audio_duration_ms: int,
         recognized_tokens: list[dict[str, str]],
         wav: Optional[np.ndarray] = None,
+        expected_ipa_str: Optional[str] = None,
     ) -> tuple[list[WordResult], int, int]:
         """
         Align expected words and target IPA with actual pronounced phonemes.
@@ -458,7 +514,10 @@ class Wav2Vec2PhonemeService:
 
         for w_idx, word in enumerate(words):
             clean_word = word.lower().strip(".,!?;:\"'")
-            expected_ipas = decompose_word_to_ipa(clean_word)
+            if len(words) == 1 and expected_ipa_str:
+                expected_ipas = parse_ipa_to_phonemes(expected_ipa_str)
+            else:
+                expected_ipas = decompose_word_to_ipa(clean_word)
             num_phones = len(expected_ipas)
 
             # Check if this word was completely omitted in a sentence

@@ -97,11 +97,13 @@ async def assess_pronunciation(
 
     # 3. Phoneme CTC Recognition & Acoustic Alignment (Phase 2)
     recognized_tokens = phoneme_service.recognize_phonemes(wav)
+    expected_ipa_str = (meta.expectedIpa.strip() if meta and meta.expectedIpa else None)
     words, accuracy_bp, completeness_bp = phoneme_service.build_word_and_phoneme_breakdown(
         target_text=target_text,
         audio_duration_ms=duration_ms,
         recognized_tokens=recognized_tokens,
         wav=wav,
+        expected_ipa_str=expected_ipa_str,
     )
 
     # 4. Utterance-level Scoring (Phase 1)

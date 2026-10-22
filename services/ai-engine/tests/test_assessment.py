@@ -281,3 +281,35 @@ def test_ctc_forced_alignment_computes_monotonic_timestamps():
         assert start_ms is not None
         assert end_ms is not None
         assert start_ms <= end_ms
+
+
+def test_phoneme_decomposition_for_shoot_and_expected_ipa(client):
+    """Verify that 'shoot' correctly targets long vowel /uː/ and does not trigger /ʊ/ false alarm."""
+    from app.services.phoneme_service import decompose_word_to_ipa, parse_ipa_to_phonemes
+
+    phones = decompose_word_to_ipa("shoot")
+    assert phones == ["ʃ", "uː", "t"]
+
+    parsed = parse_ipa_to_phonemes("/ʃuːt/")
+    assert parsed == ["ʃ", "uː", "t"]
+
+    audio_bytes = create_dummy_wav_bytes(duration_s=0.8, amplitude=0.3)
+    meta = {
+        "sessionId": "018f4a7c-87d0-7a32-9c10-234567890abc",
+        "lessonItemId": "018f4a7c-87d0-7a32-9c10-234567890def",
+        "idempotencyKey": "018f4a7c-87d0-7a32-9c10-234567890eee",
+        "audioDurationMs": 800,
+        "accent": "en-GB-RP",
+        "targetText": "shoot",
+        "expectedIpa": "/ʃuːt/",
+    }
+
+    response = client.post(
+        "/api/v1/assess",
+        files={"audio": ("shoot.wav", audio_bytes, "audio/wav")},
+        data={"metadata": json.dumps(meta)},
+    )
+    assert response.status_code == 200
+    res = response.json()
+    assert res["words"][0]["word"] == "shoot"
+    assert [p["expectedIpa"] for p in res["words"][0]["phonemes"]] == ["ʃ", "uː", "t"]

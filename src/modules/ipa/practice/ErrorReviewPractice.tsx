@@ -104,6 +104,7 @@ export function ErrorReviewPractice() {
           phonemeSymbol: item.phonemeSymbol,
           phonemeUuid: item.phonemeId,
           highlightPart: item.phonemeSymbol,
+          expectedIpa: item.ipa,
         });
 
         const newScore = evaluation.score;
