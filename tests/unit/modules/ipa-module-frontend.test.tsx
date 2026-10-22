@@ -128,4 +128,20 @@ describe("IPA Module Frontend UI/UX Acceptance Suite", () => {
     // Check answered state triggers next button
     expect(screen.getByText("Câu hỏi tiếp theo")).toBeInTheDocument();
   });
+
+  it("IPA-06: Verifies authentic audio URL mapping for all 44 phonemes, including /ɡ/ (go)", async () => {
+    const { getPhonemeAudioUrl } = await import("@/core/data/ipa-audio-urls");
+
+    // Explicit check for /ɡ/ (U+0261)
+    expect(getPhonemeAudioUrl("ɡ")).toBe("/audio/ipa/con-g.mp3");
+    expect(getPhonemeAudioUrl("g")).toBe("/audio/ipa/con-g.mp3");
+    expect(getPhonemeAudioUrl("con-g")).toBe("/audio/ipa/con-g.mp3");
+
+    // Verify all 44 phonemes in dataset have valid audio URLs
+    for (const phoneme of IPA_PHONEMES) {
+      const url = getPhonemeAudioUrl(phoneme.symbol) || getPhonemeAudioUrl(phoneme.id);
+      expect(url).toBeTruthy();
+      expect(url).toMatch(/^\/audio\/ipa\/.+\.mp3$/);
+    }
+  });
 });

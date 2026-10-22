@@ -61,6 +61,19 @@ export const IPA_AUDIO_URLS: Record<string, string> = {
   "con-r": "/audio/ipa/con-r.mp3",
   "con-w": "/audio/ipa/con-w.mp3",
   "con-y": "/audio/ipa/con-y.mp3",
+
+  // Aliases matching ipa-dataset.ts IDs
+  "o-long": "/audio/ipa/or-long.mp3",
+  "ah-short": "/audio/ipa/a-short.mp3",
+  "diph-ear": "/audio/ipa/ir.mp3",
+  "diph-e-i": "/audio/ipa/ei.mp3",
+  "diph-ure": "/audio/ipa/ure.mp3",
+  "diph-oi": "/audio/ipa/oi.mp3",
+  "diph-oh": "/audio/ipa/ou.mp3",
+  "diph-air": "/audio/ipa/air.mp3",
+  "diph-eye": "/audio/ipa/ai.mp3",
+  "diph-ow": "/audio/ipa/au.mp3",
+  "con-dg": "/audio/ipa/con-j.mp3",
 };
 
 export const IPA_SYMBOL_AUDIO_URLS: Record<string, string | undefined> = {
@@ -95,6 +108,7 @@ export const IPA_SYMBOL_AUDIO_URLS: Record<string, string | undefined> = {
   "d": IPA_AUDIO_URLS["con-d"],
   "k": IPA_AUDIO_URLS["con-k"],
   "g": IPA_AUDIO_URLS["con-g"],
+  "ɡ": IPA_AUDIO_URLS["con-g"], // U+0261 LATIN SMALL LETTER SCRIPT G (go)
   "f": IPA_AUDIO_URLS["con-f"],
   "v": IPA_AUDIO_URLS["con-v"],
   "θ": IPA_AUDIO_URLS["con-th-unvoiced"],
@@ -119,7 +133,19 @@ export const IPA_SYMBOL_AUDIO_URLS: Record<string, string | undefined> = {
  * Returns authentic isolated audio URL for a given phoneme ID or symbol.
  */
 export function getPhonemeAudioUrl(idOrSymbol: string): string | undefined {
-  return IPA_AUDIO_URLS[idOrSymbol] ?? IPA_SYMBOL_AUDIO_URLS[idOrSymbol];
+  if (!idOrSymbol) return undefined;
+  const direct = IPA_AUDIO_URLS[idOrSymbol] ?? IPA_SYMBOL_AUDIO_URLS[idOrSymbol];
+  if (direct) return direct;
+
+  // Normalized fallbacks (U+0261 script g <-> standard g, colon variations)
+  const normG = idOrSymbol.replace(/ɡ/g, "g");
+  const normColon = idOrSymbol.replace(/ː/g, ":");
+  return (
+    IPA_AUDIO_URLS[normG] ??
+    IPA_SYMBOL_AUDIO_URLS[normG] ??
+    IPA_AUDIO_URLS[normColon] ??
+    IPA_SYMBOL_AUDIO_URLS[normColon]
+  );
 }
 
 /**
@@ -133,6 +159,7 @@ export function getPhonemeSpokenText(idOrSymbol: string): string {
     "d": "d",
     "k": "k",
     "g": "g",
+    "ɡ": "g",
     "f": "f",
     "v": "v",
     "s": "s",
