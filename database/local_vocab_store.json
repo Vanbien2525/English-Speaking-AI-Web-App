@@ -25,16 +25,16 @@
       "exampleSentenceVi": "Tôi chạy bộ trong công viên mỗi buổi sáng.",
       "articulatoryTipVi": "Đầu lưỡi cong nhẹ về phía sau cho âm /r/, mở miệng tự nhiên phát âm nguyên âm ngắn /ʌ/, nâng đầu lưỡi chạm nướu cho âm mũi /n/.",
       "referenceAudioUrl": null,
-      "sm2Repetition": 3,
-      "sm2IntervalDays": 7,
-      "sm2EaseFactorBp": 2500,
-      "sm2NextReviewAt": "2026-10-22T14:00:11.932Z",
-      "sm2LastReviewedAt": null,
-      "lastMasteryScoreBp": 9000,
-      "isMastered": true,
-      "masteryAttemptsCount": 0,
+      "sm2Repetition": 0,
+      "sm2IntervalDays": 1,
+      "sm2EaseFactorBp": 1960,
+      "sm2NextReviewAt": "2026-10-23T14:57:52.079Z",
+      "sm2LastReviewedAt": "2026-10-22T14:57:52.079Z",
+      "lastMasteryScoreBp": null,
+      "isMastered": false,
+      "masteryAttemptsCount": 1,
       "createdAt": "2026-10-22T14:00:11.932Z",
-      "updatedAt": "2026-10-22T14:02:02.354Z"
+      "updatedAt": "2026-10-22T15:04:08.337Z"
     },
     {
       "id": "34ad8612-646d-4a7c-8f77-25d5f6e35e2c",
@@ -57,7 +57,7 @@
       "isMastered": false,
       "masteryAttemptsCount": 0,
       "createdAt": "2026-10-22T14:06:28.240Z",
-      "updatedAt": "2026-10-22T14:06:28.240Z"
+      "updatedAt": "2026-10-22T15:04:06.893Z"
     },
     {
       "id": "63d9b146-9e48-4015-971b-cf2129e5842c",
@@ -80,7 +80,7 @@
       "isMastered": false,
       "masteryAttemptsCount": 0,
       "createdAt": "2026-10-22T14:06:52.608Z",
-      "updatedAt": "2026-10-22T14:06:52.608Z"
+      "updatedAt": "2026-10-22T15:04:12.876Z"
     },
     {
       "id": "580e7d99-cb25-418c-9d9f-4c92ee51c0a0",
@@ -94,16 +94,16 @@
       "exampleSentenceVi": "Luyện phát âm hằng ngày là một thói quen rất tốt.",
       "articulatoryTipVi": "Phát âm nguyên âm ngắn /ʊ/ (môi thả lỏng, hơi hé, không kéo dài thành /uː/), bật nhẹ âm /ɡ/ ở cuống họng và chạm răng cho âm /d/.",
       "referenceAudioUrl": "https://api.dictionaryapi.dev/media/pronunciations/en/good-uk.mp3",
-      "sm2Repetition": 0,
-      "sm2IntervalDays": 1,
-      "sm2EaseFactorBp": 2500,
-      "sm2NextReviewAt": "2026-10-22T14:55:24.815Z",
-      "sm2LastReviewedAt": null,
-      "lastMasteryScoreBp": null,
-      "isMastered": false,
-      "masteryAttemptsCount": 0,
+      "sm2Repetition": 3,
+      "sm2IntervalDays": 7,
+      "sm2EaseFactorBp": 1300,
+      "sm2NextReviewAt": "2026-10-23T15:02:57.722Z",
+      "sm2LastReviewedAt": "2026-10-22T15:02:57.722Z",
+      "lastMasteryScoreBp": 9000,
+      "isMastered": true,
+      "masteryAttemptsCount": 9,
       "createdAt": "2026-10-22T14:55:24.815Z",
-      "updatedAt": "2026-10-22T14:55:24.815Z"
+      "updatedAt": "2026-10-22T15:04:10.053Z"
     }
   ]
 }

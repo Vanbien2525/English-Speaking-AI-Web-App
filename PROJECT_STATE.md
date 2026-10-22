@@ -144,4 +144,19 @@
   - ESLint Static Analysis: **0 warnings, 0 errors (`npm run lint`)**.
   - Next.js Production Build: **Build pass 100% (98 static & SSG pages)**.
 
-## [>] Vị Trí Hiện Tại: [Đã Hoàn Thành Toàn Bộ 5 Yêu Cầu Tinh Chỉnh Đợt 7 - Đạt Chuẩn 100% Quality Gates]
+## [x] Giai Đoạn 5: Commit Chuẩn Hóa & Kích Hoạt Google Labs Jules Audit (HOÀN THÀNH 100%)
+- [x] **Git Conventional Commit**: Đã commit mã nguồn hoàn thiện với hash `ca06c3b` trên nhánh `feature/ipa-studio-enhancement` và push lên remote `origin`.
+- [x] **Issue-Triggered Autonomous Execution**: Đã tạo thành công Issue [#17](https://github.com/Vanbien2525/English-Speaking-AI-Web-App/issues/17) với tiêu đề `[Jules Audit] Comprehensive Quality & End-to-End Verification of Active Vocabulary & Speaking Mastery Module` và gắn nhãn `["jules", "enhancement"]`.
+- [x] **Trạng thái**: Đã chuyển giao nhiệm vụ audit độc lập cho Google Labs Jules để chạy toàn bộ kiểm thử trên Cloud VM.
+
+## [x] Hoàn Thiện & Tinh Chỉnh Đợt 8: Đồng Bộ Đếm Số Từ Đã Thuộc Khi Đánh Giá Lại Thẻ 'Again' (HOÀN THÀNH 100%)
+- [x] **Khắc phục lỗi trạng thái `isMastered` trong `VocabularyService`**: Khi người dùng đánh giá thẻ trong phiên ôn tập flashcard với mức `again` (Cấp 1), `isMastered` được cập nhật chính xác thành `false` thay vì giữ nguyên giá trị cũ `item.isMastered` ([vocabulary-service.ts](file:///d:/English-Speaking-AI-Web-App/src/core/services/vocabulary-service.ts)).
+- [x] **Đồng bộ hóa giao diện tức thời 0ms trong `useVocabularyStore`**: Cập nhật hàm `submitSpeakingReview` để tính toán lại số lượng từ đã thuộc vững chắc `masteredWordsCount` từ danh sách từ mới và đồng bộ vào `state.metrics`, giúp số lượng hiển thị trên header giảm ngay 1 mà không cần tải lại trang ([useVocabularyStore.ts](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/stores/useVocabularyStore.ts)).
+- [x] **Lưu trạng thái bền vững xuống đĩa**: Thêm `this.persistToDisk()` vào `saveFlashcardReviewTransaction` trong [vocabulary-repository.ts](file:///d:/English-Speaking-AI-Web-App/src/core/repositories/vocabulary-repository.ts), đảm bảo dữ liệu ghi nhận ngay vào `local_vocab_store.json`.
+- [x] **100% Quality Gates**:
+  - Vitest Test Suite: **143/143 tests green (23 test files)** (Bổ sung test case `VFM-07`).
+  - TypeScript Strict: **0 errors (`npm run typecheck`)**.
+  - ESLint Static Analysis: **0 warnings, 0 errors (`npm run lint`)**.
+  - Next.js Production Build: **Build pass 100% (98 static & SSG pages)**.
+
+## [>] Vị Trí Hiện Tại: [Đã Fix Hoàn Tất Bug Đếm Từ Đã Thuộc Khi Đánh Giá Lại 'Again', Pass 143/143 Tests & Build 100%]

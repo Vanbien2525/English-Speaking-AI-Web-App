@@ -709,7 +709,7 @@ export class VocabularyService {
       sm2NextReviewAt: nextReviewDate.toISOString(),
       sm2LastReviewedAt: new Date().toISOString(),
       lastMasteryScoreBp: pronunciationScoreBp,
-      isMastered: isPassed ? true : item.isMastered,
+      isMastered: reviewLevel ? reviewLevel === "easy" : isPassed,
       masteryAttemptsCount: item.masteryAttemptsCount + 1,
     };
 

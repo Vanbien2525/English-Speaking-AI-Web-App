@@ -583,6 +583,7 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
       if (res.ok) {
         const reviewResult = data as FlashcardReviewResult;
         // In-place update so card does not jump or disappear during review
+        const isMasteredNow = params.reviewLevel ? params.reviewLevel === "easy" : reviewResult.isPassed;
         const updateItemState = (item: VocabularyItem): VocabularyItem => {
           if (item.id !== params.vocabularyItemId) return item;
           return {
@@ -590,16 +591,24 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
             sm2IntervalDays: reviewResult.intervalDaysAfter,
             sm2Repetition: reviewResult.repetitionCountAfter,
             lastMasteryScoreBp: reviewResult.pronunciationScoreBp,
-            isMastered: reviewResult.isPassed || item.isMastered,
+            isMastered: isMasteredNow,
             masteryAttemptsCount: item.masteryAttemptsCount + 1,
           };
         };
 
+        const currentAllItems = get().allItems;
+        const newAllItems = currentAllItems.map(updateItemState);
+        const newMasteredCount = newAllItems.filter((i) => i.isMastered).length;
+
         set((state) => ({
           lastReviewResult: reviewResult,
           dueItems: state.dueItems.map(updateItemState),
-          allItems: state.allItems.map(updateItemState),
+          allItems: newAllItems,
           items: state.items.map(updateItemState),
+          metrics: {
+            ...state.metrics,
+            masteredWordsCount: newMasteredCount,
+          },
         }));
 
         return reviewResult;

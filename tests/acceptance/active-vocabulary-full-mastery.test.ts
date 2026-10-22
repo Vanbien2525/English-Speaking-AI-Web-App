@@ -121,4 +121,35 @@ describe("Active Vocabulary Full Mastery Suite (FEAT-VOCABULARY-FULL-MASTERY)", 
     expect(data.item.isMastered).toBe(true);
     expect(data.item.sm2IntervalDays).toBe(7);
   });
+
+  it("VFM-07: Resets isMastered to false and decrements mastered words count when rated 'again'", async () => {
+    const items = await service.getItems();
+    expect(items.length).toBeGreaterThan(0);
+    const targetItem = items[0]!;
+
+    // 1. Mark item as mastered first
+    await repo.updateItemLevel(targetItem.id, "mastered");
+    const initialMetrics = await service.getMetrics();
+    const initialMastered = initialMetrics.masteredWordsCount;
+    expect(initialMastered).toBeGreaterThanOrEqual(1);
+
+    // 2. Submit speaking review with 'again'
+    const reviewResult = await service.submitSpeakingReview({
+      vocabularyItemId: targetItem.id,
+      pronunciationScoreBp: 4500,
+      audioDurationMs: 1200,
+      idempotencyKey: "test-idem-" + Date.now(),
+      reviewLevel: "again",
+    });
+
+    expect(reviewResult.isPassed).toBe(false);
+
+    // 3. Verify item in repo has isMastered: false
+    const updatedItem = await repo.findItemById(targetItem.id);
+    expect(updatedItem?.isMastered).toBe(false);
+
+    // 4. Verify metrics decremented
+    const updatedMetrics = await service.getMetrics();
+    expect(updatedMetrics.masteredWordsCount).toBe(initialMastered - 1);
+  });
 });

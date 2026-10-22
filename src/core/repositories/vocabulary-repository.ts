@@ -566,6 +566,7 @@ export class InMemoryVocabularyRepository implements VocabularyRepository {
       });
     }
 
+    this.persistToDisk();
     return { reviewId, isIdempotentHit: false };
   }
 
