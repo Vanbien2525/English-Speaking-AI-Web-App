@@ -148,10 +148,16 @@
   - Tải và đồng bộ hóa toàn bộ 44 file âm thanh chuẩn phát âm âm vị cô lập (`*_isolation.mp3`) từ repo `https://github.com/xiaozhah/phoneme_audio` trực tiếp vào `public/audio/ipa/*.mp3`.
   - Dọn dẹp toàn bộ file âm thanh cũ/nặng, tối ưu dung lượng cực nhẹ (~15KB/file), tương thích 100% mọi trình duyệt và thiết bị di động.
 - [x] **5. Đạt 100% Quality Gates Toàn Diện**:
-  - Pytest Python AI Engine: **9/9 tests passed**.
-  - Vitest Next.js Test Suite: **128/128 tests passed (21 test files)**.
+  - Pytest Python AI Engine: **10/10 tests passed** (Bổ sung test case phân rã chuẩn cho từ `shoot` và `expectedIpa`).
+  - Vitest Next.js Test Suite: **129/129 tests passed (21 test files)** (Bổ sung test case IPA-06 kiểm định trọn vẹn 44 âm vị, bao gồm /ɡ/ Unicode U+0261).
   - TypeScript Strict: **0 errors (`npm run typecheck`)**.
   - ESLint Static Analysis: **0 warnings, 0 errors (`npm run lint`)**.
   - Next.js Production Build: **Build pass 100% (98 static & SSG pages)**.
+- [x] **6. Sửa Triệt Để Lỗi Âm Vị /ɡ/ (go) & Lệch Phiên Âm Từ 'shoot'**:
+  - `src/core/data/ipa-audio-urls.ts`: Thêm mapping cho ký tự Unicode `ɡ` (U+0261 LATIN SMALL LETTER SCRIPT G) trỏ tới `/audio/ipa/con-g.mp3` kèm chuẩn hóa tự động.
+  - Sửa dứt điểm tình trạng click vào thẻ /ɡ/ go bị im lặng.
+- [x] **7. Jules Đã Hoàn Tất Kiểm Định & Tạo Pull Request #16**:
+  - Jules Cloud VM đã chạy thành công task và mở **Pull Request #16** (Fixes #15).
+  - GitHub Actions CI `Verify & Audit` đã **PASS Xanh 100%**.
 
-## [>] Vị Trí Hiện Tại: [Đã Commit Lên Nhánh `feature/ipa-studio-enhancement` & Đã Tạo GitHub Issue #15 Gắn Nhãn `jules` Để Jules Đánh Giá Toàn Diện Chức Năng]
+## [>] Vị Trí Hiện Tại: [Jules Đã Tạo PR #16 Trên Nhánh `feature/ipa-studio-enhancement` & CI Đã Xanh 100% - Chờ Tech Lead Duyệt và Squash and Merge]
