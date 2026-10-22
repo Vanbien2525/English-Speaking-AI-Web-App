@@ -5,7 +5,7 @@ import type { ClozeSpellingQuestion } from "@/core/dto/vocabulary.dto";
 import { useVocabularyStore } from "../stores/useVocabularyStore";
 
 export function SpellingClozeStudio() {
-  const { selectedDeckId, decks, incrementDailyPracticed } = useVocabularyStore();
+  const { selectedDeckId, isDailyFocusMode, decks, incrementDailyPracticed } = useVocabularyStore();
   const [isShaking, setIsShaking] = useState(false);
   const [questions, setQuestions] = useState<ClozeSpellingQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -30,9 +30,10 @@ export function SpellingClozeStudio() {
     setShowIpaHint(false);
 
     try {
-      const url = selectedDeckId
-        ? `/api/vocabulary/quiz/cloze?deckId=${encodeURIComponent(selectedDeckId)}&limit=5`
-        : "/api/vocabulary/quiz/cloze?limit=5";
+      const effectiveDeckId = isDailyFocusMode ? "today" : selectedDeckId;
+      const url = effectiveDeckId
+        ? `/api/vocabulary/quiz/cloze?deckId=${encodeURIComponent(effectiveDeckId)}&limit=15`
+        : "/api/vocabulary/quiz/cloze?limit=15";
 
       const res = await fetch(url);
       if (res.ok) {
@@ -44,15 +45,16 @@ export function SpellingClozeStudio() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedDeckId]);
+  }, [selectedDeckId, isDailyFocusMode]);
 
   useEffect(() => {
     let ignore = false;
     async function load() {
       try {
-        const url = selectedDeckId
-          ? `/api/vocabulary/quiz/cloze?deckId=${encodeURIComponent(selectedDeckId)}&limit=5`
-          : "/api/vocabulary/quiz/cloze?limit=5";
+        const effectiveDeckId = isDailyFocusMode ? "today" : selectedDeckId;
+      const url = effectiveDeckId
+        ? `/api/vocabulary/quiz/cloze?deckId=${encodeURIComponent(effectiveDeckId)}&limit=15`
+        : "/api/vocabulary/quiz/cloze?limit=15";
 
         const res = await fetch(url);
         if (!ignore && res.ok) {
@@ -69,7 +71,7 @@ export function SpellingClozeStudio() {
     return () => {
       ignore = true;
     };
-  }, [selectedDeckId]);
+  }, [selectedDeckId, isDailyFocusMode]);
 
   const currentQ = questions[currentIndex];
 

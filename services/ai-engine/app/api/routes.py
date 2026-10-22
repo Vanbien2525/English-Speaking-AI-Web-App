@@ -138,14 +138,15 @@ async def assess_pronunciation(
         if accuracy_bp < 8000:
             overall_bp = min(overall_bp, accuracy_bp)
 
-        # Rule 4: If there is any major articulatory error (e.g. vowel elongation /uː/ instead of /ʊ/,
-        # final consonant omission /k/, /t/, substituted dental fricative /θ/), strictly cap overall score at 6200 (62%)
+        # Rule 4: Pedagogical mastery gate: If there are real major articulatory errors (e.g. substituted /θ/ -> /s/,
+        # vowel elongation /uː/, or omitted final consonants), cap overall score strictly at 6500 bp (65%)
+        # to prevent severe mispronunciations from passing mastery.
         has_major_error = any(
             any(p.severity == "major" for p in w.phonemes)
             for w in words
         )
         if has_major_error:
-            overall_bp = min(overall_bp, 6200)
+            overall_bp = min(overall_bp, 6500)
 
     overall_bp = max(0, min(10000, overall_bp))
 

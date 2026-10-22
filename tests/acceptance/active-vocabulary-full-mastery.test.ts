@@ -152,4 +152,28 @@ describe("Active Vocabulary Full Mastery Suite (FEAT-VOCABULARY-FULL-MASTERY)", 
     const updatedMetrics = await service.getMetrics();
     expect(updatedMetrics.masteredWordsCount).toBe(initialMastered - 1);
   });
+
+  it("VFM-08: Filters items created today when deckId is 'today' for daily practice studio", async () => {
+    // 1. Get all items
+    const allItems = await service.getItems();
+    expect(allItems.length).toBeGreaterThan(0);
+
+    // 2. Query today items
+    const todayItems = await service.getItems("today");
+    expect(Array.isArray(todayItems)).toBe(true);
+
+    const today = new Date();
+    todayItems.forEach((item) => {
+      const d = new Date(item.createdAt);
+      expect(d.getDate()).toBe(today.getDate());
+      expect(d.getMonth()).toBe(today.getMonth());
+      expect(d.getFullYear()).toBe(today.getFullYear());
+    });
+
+    // 3. Quiz generation with 'today'
+    if (todayItems.length > 0) {
+      const quiz = await service.getClozeSpellingQuiz("today", 5);
+      expect(Array.isArray(quiz)).toBe(true);
+    }
+  });
 });

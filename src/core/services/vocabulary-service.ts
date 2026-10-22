@@ -937,6 +937,18 @@ export class VocabularyService {
 
   async getItems(deckId?: string, userId?: string): Promise<VocabularyItem[]> {
     const uid = userId ?? this.defaultUserId;
+    if (deckId === "today") {
+      const all = await this.vocabRepo.findItemsByUserId(uid);
+      const today = new Date();
+      return all.filter((it) => {
+        const d = new Date(it.createdAt);
+        return (
+          d.getFullYear() === today.getFullYear() &&
+          d.getMonth() === today.getMonth() &&
+          d.getDate() === today.getDate()
+        );
+      });
+    }
     if (deckId) {
       return this.vocabRepo.findItemsByDeckId(deckId);
     }

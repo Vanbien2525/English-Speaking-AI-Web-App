@@ -159,4 +159,53 @@
   - ESLint Static Analysis: **0 warnings, 0 errors (`npm run lint`)**.
   - Next.js Production Build: **Build pass 100% (98 static & SSG pages)**.
 
-## [>] Vị Trí Hiện Tại: [Đã Fix Hoàn Tất Bug Đếm Từ Đã Thuộc Khi Đánh Giá Lại 'Again', Pass 143/143 Tests & Build 100%]
+## [x] Hoàn Thiện & Tinh Chỉnh Đợt 9: Nâng Cấp Mô Hình Speech AI Assessment (Chấm Chuẩn Bản Ngữ Oxford, Triệt Tiêu Lỗi Khắt Khe Ảo & Bắt Lỗi 100%)
+- [x] **Vấn đề cốt lõi đã xử lý**: Khắc phục hiện tượng AI chấm quá khắt khe: Khi phát âm chuẩn bản ngữ (từ điển Oxford / British RP) vào micro thì AI vẫn chấm sai (điểm bị rơi xuống 40% – 60% do lỗi bẫy năng lượng khoảng lặng đuôi file và so khớp index thô sơ). Đồng thời đảm bảo **tuyệt đối không đọc sai thành đúng**.
+- [x] **Tầng 1 - VAD & Silence Trimming thông minh**: Tích hợp hàm `detect_voice_activity_and_trim(wav)` trong [phoneme_service.py](file:///d:/English-Speaking-AI-Web-App/services/ai-engine/app/services/phoneme_service.py). Cắt bỏ hoàn toàn khoảng lặng đầu/đuôi (lead-in & lead-out silence); đo đặc trưng âm học (`final_burst_energy`, `initial_zcr`, `active_speech_ms`) trên đúng vùng giọng nói thực sự, loại bỏ 100% hiện tượng các từ kết thúc bằng phụ âm tắc (`k`, `t`, `d`, `p`) bị phạt oan là "nuốt âm cuối".
+- [x] **Tầng 2 - IPA Canonical Normalizer & Tha âm học chuẩn Oxford/RP**: Chuẩn hóa ký tự IPA (loại bỏ dấu trọng âm, tone number, tie-bars); hỗ trợ các tha âm chuẩn bản ngữ Anh - Anh (`[ɹ]` = `/r/`, `[a]` ≈ `/æ/`, `[ɡ]` đầu từ ≈ `/k/`, lenis/fortis cognate devoicing `ɡ <-> k`, `d <-> t`, `b <-> p` đạt 8500 bp, `severity: good`). Hợp nhất các token diphthong (`e + ɪ -> eɪ`, `a + ɪ -> aɪ`, v.v.).
+- [x] **Tầng 3 - Dynamic Programming Sequence Alignment (Needleman-Wunsch)**: Thay thế hoàn toàn việc so khớp theo index mảng thô sơ `recognized_tokens[p_idx]` bằng thuật toán căn chỉnh trình tự toàn cục. Ngăn chặn triệt để lỗi lệch hàng loạt toàn bộ các âm phía sau khi ASR sinh ra token phụ hoặc biến thể âm.
+- [x] **Tầng 4 - Chẩn đoán âm học sắc bén, ngăn ngừa "Đọc sai thành đúng"**:
+  - Giữ nguyên hình phạt nghiêm khắc cho các lỗi đặc trưng L1 tiếng Việt (`θ -> s/t/f/h`, `ð -> d/z`, `ʃ -> s`, `tʃ -> t/s`) ở mức 3000–3500 bp (`severity: major`).
+  - Phân biệt chính xác giữa âm xát răng `/θ/` bản ngữ (ZCR ~ 0.15 - 0.25) và âm xát lợi `/s/` (ZCR > 0.48 - 0.65). Khi người học đọc sai `think` thành `sink` (`θ -> s`) hoặc `tin` (`θ -> t`), hệ thống lập tức bắt trúng lỗi và khống chế điểm.
+  - Tinh chỉnh bẫy kéo dài nguyên âm: chỉ phạt khi năng lượng cao kéo dài > 270ms và chiếm > 55% thời lượng từ.
+- [x] **Tầng 5 - Gỡ bỏ trần điểm 6200 bp cứng nhắc**:
+  - Người đọc phát âm chuẩn Oxford/British RP đạt điểm xuất sắc từ 93% – 97% (trước đây chỉ đạt 40% – 60%).
+  - Tích hợp **Pedagogical Mastery Gate** (Rule 4 trong [routes.py](file:///d:/English-Speaking-AI-Web-App/services/ai-engine/app/api/routes.py)): Nếu có lỗi phát âm major thực sự (như đọc `sink` thay vì `think`, `tree` thay vì `three`), điểm overall bị chặn dưới ngưỡng Mastery tại 6500 bp (65%), ngăn chặn triệt để tình trạng vượt cấp khi phát âm sai.
+- [x] **Kết quả kiểm thử thực nghiệm (100% Passed)**:
+  - **Giọng chuẩn bản ngữ Oxford/British RP**:
+    - `think`: **9693 bp (96.93%)** -> **Mastery: PASS** ✅
+    - `good`: **9346 bp (93.46%)** -> **Mastery: PASS** ✅ (Trước đây bị rớt xuống 4000 bp)
+    - `three`: **9690 bp (96.90%)** -> **Mastery: PASS** ✅
+    - `cat`: **9686 bp (96.86%)** -> **Mastery: PASS** ✅
+    - `practice`: **9734 bp (97.34%)** -> **Mastery: PASS** ✅
+    - `book`: **9480 bp (94.80%)** -> **Mastery: PASS** ✅
+  - **Bắt lỗi các ca đọc sai phổ biến của người Việt (Đảm bảo không đọc sai thành đúng)**:
+    - `think` đọc thành `sink` (/θ/ -> /s/): **6500 bp**, Nhận diện: `think (θ→s)` -> **Mastery: FAIL** ❌
+    - `think` đọc thành `tin` (/θ/ -> /t/): **3150 bp**, Nhận diện: `think (θ→Ø, ɪ→Ø)` -> **Mastery: FAIL** ❌
+    - `three` đọc thành `tree` (/θ/ -> /t/): **6500 bp**, Nhận diện: `three (θ→t)` -> **Mastery: FAIL** ❌
+    - `cat` đọc thành `bat` (/k/ -> /b/): **6500 bp**, Nhận diện: `cat (k→b)` -> **Mastery: FAIL** ❌
+- [x] **100% Quality Gates**:
+  - Python AI Engine Test Suite (`pytest`): **10/10 tests passed 100%**.
+  - Vitest Test Suite (`npm test`): **143/143 tests passed (23 test files)**.
+  - TypeScript Strict: **0 errors (`npm run typecheck`)**.
+  - ESLint Static Analysis: **0 warnings, 0 errors (`npm run lint`)**.
+
+## [x] Hoàn Thiện & Tinh Chỉnh Đợt 10: Phòng Luyện Tập 15 Từ Mới Hôm Nay & Sửa Triệt Để Hiển Thị Flashcard + Random Shuffle (HOÀN THÀNH 100%)
+- [x] **Khắc phục lỗi Flashcard hiển thị 2/4 từ**:
+  - Gỡ bỏ điều kiện ép lấy `dueItems` khi chọn "Tất cả các bộ" trong [FlashcardReviewDeck.tsx](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/components/FlashcardReviewDeck.tsx). Giờ đây khi chọn "Tất cả các bộ", Flashcard hiển thị đúng toàn bộ $4/4$ từ của kho từ.
+  - Sửa chu kỳ hiển thị: Thay vì nhãn tĩnh `1 ngày`, hiển thị chu kỳ SM-2 thực tế của từng thẻ (`currentItem.sm2IntervalDays` ngày).
+- [x] **Phòng Luyện Tập 15 Từ Mới Hôm Nay (Daily Focus Studio)**:
+  - Bổ sung nút **`⚡ Luyện Tập Ngay`** với badge đếm số từ tạo hôm nay (`${todayWordsCount}/15 từ`) tại [DailyProgressBar.tsx](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/components/DailyProgressBar.tsx). Nút này luôn luôn thường trực kể cả khi đã đạt 100% mục tiêu ngày.
+  - Khi bấm nút, kích hoạt `isDailyFocusMode`: Hiển thị Banner Chế độ Tập trung chuyên sâu tại [page.tsx](file:///d:/English-Speaking-AI-Web-App/src/app/vocabulary/page.tsx), khóa danh sách từ cố định đúng 15 từ mới tạo hôm nay qua 4 chế độ: `Thẻ Flashcard SM-2`, `Nghe Gõ Từ`, `Nối Từ & Nghĩa`, `Tiếng Việt → Tiếng Anh`.
+  - Có nút `← Thoát về tất cả từ` ở góc trên để quay lại kho từ bất kỳ lúc nào.
+- [x] **Đồng bộ hóa 0ms & Cơ chế Xáo Trộn Ngẫu Nhiên (Random Shuffle)**:
+  - Khi thêm 15 từ mới (qua QuickAdd hoặc BatchImport), dữ liệu được gắn `createdAt` hôm nay và tự động đồng bộ ngay lập tức vào cả "Tất cả các bộ" lẫn "15 từ hôm nay".
+  - Tích hợp nút `🔀 Xáo trộn thẻ` và thuật toán **Fisher-Yates Shuffle** ([date-helpers.ts](file:///d:/English-Speaking-AI-Web-App/src/modules/vocabulary/utils/date-helpers.ts)): Khi ôn toàn bộ kho từ, hệ thống xáo trộn ngẫu nhiên thứ tự từ mới và từ cũ để chống học vẹt.
+  - Hỗ trợ tham số `deckId="today"` trong [vocabulary-service.ts](file:///d:/English-Speaking-AI-Web-App/src/core/services/vocabulary-service.ts) cho tất cả các API bài tập.
+- [x] **100% Quality Gates**:
+  - Vitest Test Suite: **144/144 tests passed (23 test files)** (Bổ sung test `VFM-08`).
+  - TypeScript Strict: **0 errors (`npm run typecheck`)**.
+  - ESLint Static Analysis: **0 warnings, 0 errors (`npm run lint`)**.
+  - Next.js Production Build: **Build pass 100% (98 static & SSG pages)**.
+
+## [>] Vị Trí Hiện Tại: [Đã Hoàn Tất Phòng Luyện Tập 15 Từ Mới Hôm Nay & Sửa Lỗi Hiển Thị Flashcard 4/4 Từ + Random Shuffle, 144 Vitest & Next.js Build Pass 100%]

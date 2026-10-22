@@ -7,6 +7,7 @@ import type { PronunciationAssessment } from "@/core/dto/shared.dto";
 import { useVocabularyStore } from "../stores/useVocabularyStore";
 import { useVocabularyAudioRecorder } from "../hooks/useVocabularyAudioRecorder";
 import { VocabWaveform } from "./VocabWaveform";
+import { isSameDay, shuffleArray } from "../utils/date-helpers";
 
 
 
@@ -24,6 +25,12 @@ export function FlashcardReviewDeck() {
     nextCard,
     prevCard,
     submitSpeakingReview,
+    isDailyFocusMode,
+    isRandomShuffle,
+    toggleShuffle,
+    setQuickAddOpen,
+    setBatchImportOpen,
+    exitDailyPractice,
   } = useVocabularyStore();
 
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -35,14 +42,23 @@ export function FlashcardReviewDeck() {
   const [prevCardIndex, setPrevCardIndex] = useState(currentCardIndex);
   const [prevDeckId, setPrevDeckId] = useState(selectedDeckId);
 
-  // Active items based on selected deck
+  // Active items based on selected deck and mode
   const activeDeckItems = useMemo(() => {
-    if (!selectedDeckId) {
-      return dueItems.length > 0 ? dueItems : allItems;
+    let list = allItems;
+    if (isDailyFocusMode) {
+      list = allItems.filter((i) => isSameDay(i.createdAt));
+    } else if (selectedDeckId) {
+      list = allItems.filter((i) => i.deckId === selectedDeckId);
+    } else {
+      // Khi chọn "Tất cả các bộ": Lấy toàn bộ allItems!
+      list = allItems.length > 0 ? allItems : dueItems;
     }
-    const filtered = allItems.filter((i) => i.deckId === selectedDeckId);
-    return filtered;
-  }, [dueItems, allItems, selectedDeckId]);
+
+    if (isRandomShuffle) {
+      return shuffleArray(list);
+    }
+    return list;
+  }, [allItems, dueItems, selectedDeckId, isDailyFocusMode, isRandomShuffle]);
 
   if (selectedDeckId !== prevDeckId) {
     setPrevDeckId(selectedDeckId);
@@ -196,6 +212,43 @@ export function FlashcardReviewDeck() {
   };
 
   if (!currentItem || activeDeckItems.length === 0) {
+    if (isDailyFocusMode) {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-emerald-500/20 bg-surface shadow-xs">
+          <span className="text-5xl mb-4">🎯</span>
+          <h3 className="text-xl font-bold text-ink mb-2">
+            Hôm nay bạn chưa thêm từ mới nào!
+          </h3>
+          <p className="text-xs text-ink-muted max-w-md mb-6 leading-relaxed">
+            Mục tiêu hàng ngày là 15 từ. Hãy thêm từ vựng mới hôm nay qua tính năng thêm nhanh hoặc nhập hàng loạt để bắt đầu phòng luyện tập 15 từ.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setQuickAddOpen(true)}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-primary text-canvas shadow-xs hover:bg-primary-hover transition cursor-pointer"
+            >
+              + Thêm 1 từ nhanh
+            </button>
+            <button
+              type="button"
+              onClick={() => setBatchImportOpen(true)}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-surface-raised border border-border-subtle text-ink shadow-xs hover:border-primary/40 transition cursor-pointer"
+            >
+              📥 Nhập hàng loạt
+            </button>
+            <button
+              type="button"
+              onClick={() => exitDailyPractice()}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-ink-muted hover:text-ink transition cursor-pointer"
+            >
+              Quay lại tất cả từ
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     const currentDeck = decks.find((d) => d.id === selectedDeckId);
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-border-subtle bg-surface">
@@ -216,17 +269,38 @@ export function FlashcardReviewDeck() {
   return (
     <div className="flex flex-col items-center w-full max-w-2xl mx-auto gap-5">
       {/* Session Progress Header */}
-      <div className="w-full flex items-center justify-between px-2 text-sm text-ink-muted">
+      <div className="w-full flex flex-wrap items-center justify-between gap-2 px-2 text-sm text-ink-muted">
         <div className="flex items-center gap-2">
+          {isDailyFocusMode && (
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1">
+              <span>⚡</span> 15 Từ Mới Hôm Nay
+            </span>
+          )}
           <span className="font-semibold text-ink">
             Thẻ {currentCardIndex + 1} / {activeDeckItems.length}
           </span>
           <span className="text-xs px-2 py-0.5 rounded-full bg-surface-raised border border-border-subtle">
-            Chu kỳ hiện tại: {currentItem.sm2IntervalDays} ngày
+            Chu kỳ SM-2: {currentItem.sm2IntervalDays} ngày
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-ink-muted">Nhấn [Space] để lật thẻ</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleShuffle();
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+              isRandomShuffle
+                ? "bg-primary/10 border-primary text-primary"
+                : "bg-surface-raised border-border-subtle text-ink-muted hover:text-ink"
+            }`}
+            title="Xáo trộn ngẫu nhiên thứ tự các thẻ (chống học vẹt)"
+          >
+            <span>🔀</span>
+            <span>{isRandomShuffle ? "Đang xáo trộn" : "Xáo trộn"}</span>
+          </button>
+          <span className="text-xs text-ink-muted hidden sm:inline">Nhấn [Space] để lật thẻ</span>
         </div>
       </div>
 

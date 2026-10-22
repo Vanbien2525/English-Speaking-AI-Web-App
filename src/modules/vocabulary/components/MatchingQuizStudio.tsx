@@ -14,7 +14,7 @@ interface ShuffledItem {
 }
 
 export function MatchingQuizStudio() {
-  const { selectedDeckId, incrementDailyPracticed } = useVocabularyStore();
+  const { selectedDeckId, isDailyFocusMode, incrementDailyPracticed } = useVocabularyStore();
   const [pairs, setPairs] = useState<MatchingQuizPair[]>([]);
   const [englishItems, setEnglishItems] = useState<ShuffledItem[]>([]);
   const [vietnameseItems, setVietnameseItems] = useState<ShuffledItem[]>([]);
@@ -53,9 +53,10 @@ export function MatchingQuizStudio() {
     setShowCompletion(false);
 
     try {
-      const url = selectedDeckId
-        ? `/api/vocabulary/quiz/matching?deckId=${encodeURIComponent(selectedDeckId)}&limit=6`
-        : "/api/vocabulary/quiz/matching?limit=6";
+      const effectiveDeckId = isDailyFocusMode ? "today" : selectedDeckId;
+      const url = effectiveDeckId
+        ? `/api/vocabulary/quiz/matching?deckId=${encodeURIComponent(effectiveDeckId)}&limit=15`
+        : "/api/vocabulary/quiz/matching?limit=15";
 
       const res = await fetch(url);
       if (res.ok) {
@@ -87,15 +88,16 @@ export function MatchingQuizStudio() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedDeckId]);
+  }, [selectedDeckId, isDailyFocusMode]);
 
   useEffect(() => {
     let ignore = false;
     async function load() {
       try {
-        const url = selectedDeckId
-          ? `/api/vocabulary/quiz/matching?deckId=${encodeURIComponent(selectedDeckId)}&limit=6`
-          : "/api/vocabulary/quiz/matching?limit=6";
+        const effectiveDeckId = isDailyFocusMode ? "today" : selectedDeckId;
+      const url = effectiveDeckId
+        ? `/api/vocabulary/quiz/matching?deckId=${encodeURIComponent(effectiveDeckId)}&limit=15`
+        : "/api/vocabulary/quiz/matching?limit=15";
 
         const res = await fetch(url);
         if (!ignore && res.ok) {
@@ -133,7 +135,7 @@ export function MatchingQuizStudio() {
     return () => {
       ignore = true;
     };
-  }, [selectedDeckId]);
+  }, [selectedDeckId, isDailyFocusMode]);
 
   // Check matching logic when both word and definition are selected
   const handleSelectWord = (item: ShuffledItem) => {

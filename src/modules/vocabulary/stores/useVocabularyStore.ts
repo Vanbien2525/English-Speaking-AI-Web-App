@@ -33,6 +33,11 @@ export interface VocabularyState {
   dailyPracticedCount: number;
   dailyGoalCount: number;
   incrementDailyPracticed: () => void;
+  isDailyFocusMode: boolean;
+  isRandomShuffle: boolean;
+  startDailyPractice: () => void;
+  exitDailyPractice: () => void;
+  toggleShuffle: () => void;
   fetchTroubleWords: () => Promise<void>;
   startTroubleWordsReview: () => Promise<void>;
   updateItemLevelManual: (itemId: string, level: "new" | "learning" | "mastered") => Promise<void>;
@@ -112,6 +117,29 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
   dailyGoalCount: 15,
 
   incrementDailyPracticed: () => set((state) => ({ dailyPracticedCount: state.dailyPracticedCount + 1 })),
+  isDailyFocusMode: false,
+  isRandomShuffle: false,
+  startDailyPractice: () => {
+    set({
+      isDailyFocusMode: true,
+      isReviewing: true,
+      activePracticeMode: "flashcard",
+      currentCardIndex: 0,
+      lastReviewResult: null,
+      isFlipped: false,
+    });
+  },
+  exitDailyPractice: () => {
+    set({
+      isDailyFocusMode: false,
+      currentCardIndex: 0,
+      lastReviewResult: null,
+      isFlipped: false,
+    });
+  },
+  toggleShuffle: () => {
+    set((state) => ({ isRandomShuffle: !state.isRandomShuffle }));
+  },
 
   fetchTroubleWords: async () => {
     try {

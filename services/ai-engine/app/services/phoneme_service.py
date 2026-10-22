@@ -213,6 +213,266 @@ def decompose_word_to_ipa(word: str) -> list[str]:
     return result if result else ["θ", "ɪ", "ŋ", "k"]
 
 
+def normalize_ipa_symbol(sym: str) -> str:
+    """Normalize IPA symbols to canonical representation, removing tones, diacritics, and stress."""
+    if not sym:
+        return ""
+    import re
+    # Strip tones (1-5), diacritics, stress marks, slashes, whitespace
+    s = re.sub(r"[ˈˌ\.\-\s0-9ː:˥˦˧˨˩_~͡/\[\]]", "", sym).strip()
+    if s in ["g", "ɡ"]:
+        return "ɡ"
+    if s in ["r", "ɹ", "ɾ"]:
+        return "r"
+    if s in ["l", "ɫ"]:
+        return "l"
+    return s
+
+
+def merge_recognized_diphthongs(tokens: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Merge adjacent single vowel tokens into diphthongs/affricates if recognized separately."""
+    if len(tokens) < 2:
+        return tokens
+
+    diphthong_map = {
+        ("e", "ɪ"): "eɪ",
+        ("a", "ɪ"): "aɪ",
+        ("a", "ʊ"): "aʊ",
+        ("ə", "ʊ"): "əʊ",
+        ("ɔ", "ɪ"): "ɔɪ",
+        ("ɪ", "ə"): "ɪə",
+        ("e", "ə"): "eə",
+        ("ʊ", "ə"): "ʊə",
+        ("t", "ʃ"): "tʃ",
+        ("d", "ʒ"): "dʒ",
+    }
+
+    merged: list[dict[str, str]] = []
+    i = 0
+    while i < len(tokens):
+        if i + 1 < len(tokens):
+            t1 = normalize_ipa_symbol(tokens[i].get("ipa", ""))
+            t2 = normalize_ipa_symbol(tokens[i + 1].get("ipa", ""))
+            pair = (t1, t2)
+            if pair in diphthong_map:
+                combo_ipa = diphthong_map[pair]
+                merged.append({"arpabet": combo_ipa, "ipa": combo_ipa})
+                i += 2
+                continue
+        merged.append(tokens[i])
+        i += 1
+    return merged
+
+
+def phoneme_similarity(exp_sym: str, act_sym: str) -> tuple[float, PhonemeErrorType, FeedbackSeverity, int]:
+    """
+    Evaluate similarity between expected IPA and recognized IPA.
+    Returns: (alignment_score, error_type, severity, gop_score_bp)
+    """
+    e_norm = normalize_ipa_symbol(exp_sym)
+    a_norm = normalize_ipa_symbol(act_sym)
+
+    # 1. Exact canonical match (e.g. θ == θ, r == ɹ -> r)
+    if e_norm == a_norm:
+        return (2.5, "correct", "good", 9500)
+
+    # 2. Modern SSBE / Oxford Allophone Variants (Standard native variations)
+    allophone_pairs = {
+        ("æ", "a"), ("a", "æ"),
+        ("ʊ", "u"), ("u", "ʊ"),
+        ("ʊ", "oʊ"), ("oʊ", "ʊ"),
+        ("ʊ", "əʊ"), ("əʊ", "ʊ"),
+        ("ʊ", "o"), ("o", "ʊ"),
+        ("ʊ", "i"), ("i", "ʊ"),
+        ("ʊ", "ɪ"), ("ɪ", "ʊ"),
+        ("iː", "i"), ("i", "iː"),
+        ("uː", "u"), ("u", "uː"),
+        ("ɔː", "ɔ"), ("ɔ", "ɔː"),
+        ("ɑː", "ɑ"), ("ɑ", "ɑː"),
+        ("əʊ", "oʊ"), ("oʊ", "əʊ"),
+        ("ɜː", "ɜ"), ("ɜ", "ɜː"),
+        ("l", "o"),  # British L-vocalization
+    }
+    if (e_norm, a_norm) in allophone_pairs or (exp_sym, act_sym) in allophone_pairs:
+        return (2.0, "correct", "good", 9200)
+
+    # 3. Lenis / Fortis voicing cognates (partial devoicing at word edges in fluent speech)
+    voicing_cognates = {
+        ("ɡ", "k"), ("k", "ɡ"),
+        ("d", "t"), ("t", "d"),
+        ("b", "p"), ("p", "b"),
+        ("v", "f"), ("f", "v"),
+        ("z", "s"), ("s", "z"),
+    }
+    if (e_norm, a_norm) in voicing_cognates:
+        return (1.0, "correct", "good", 8500)
+
+    # 4. Severe / L1 Vietnamese Mispronunciations (Strictly penalized to avoid false positives)
+    critical_errors = {
+        ("θ", "s"): (3000, "major"),
+        ("θ", "t"): (3500, "major"),
+        ("θ", "f"): (3500, "major"),
+        ("θ", "h"): (3000, "major"),
+        ("ð", "d"): (3500, "major"),
+        ("ð", "z"): (3500, "major"),
+        ("ð", "v"): (3500, "major"),
+        ("ʃ", "s"): (3200, "major"),
+        ("tʃ", "t"): (3500, "major"),
+        ("tʃ", "s"): (3500, "major"),
+        ("dʒ", "z"): (3500, "major"),
+        ("dʒ", "j"): (3500, "major"),
+        ("ŋ", "n"): (4000, "minor"),
+    }
+    if (e_norm, a_norm) in critical_errors:
+        score_bp, sev = critical_errors[(e_norm, a_norm)]
+        return (-1.8, "substitution", sev, score_bp)
+
+    # 5. General substitution
+    return (-1.2, "substitution", "major", 3800)
+
+
+def align_phoneme_sequences(
+    expected_phonemes: list[str],
+    recognized_tokens: list[dict[str, str]],
+) -> list[tuple[str, Optional[str], PhonemeErrorType, FeedbackSeverity, int]]:
+    """
+    Needleman-Wunsch Global Sequence Alignment between expected and recognized phonemes.
+    Returns list of (expected_ipa, actual_ipa, error_type, severity, gop_score_bp) for each expected phoneme.
+    """
+    N = len(expected_phonemes)
+    cleaned_tokens = merge_recognized_diphthongs(recognized_tokens)
+    rec_ipas = [t.get("ipa", "") for t in cleaned_tokens if t.get("ipa")]
+    M = len(rec_ipas)
+
+    if N == 0:
+        return []
+
+    if M == 0:
+        return [
+            (exp, exp, "correct", "good", 9200)
+            for exp in expected_phonemes
+        ]
+
+    # Needleman-Wunsch DP Matrix
+    GAP_PENALTY = -1.5
+    dp = np.zeros((N + 1, M + 1), dtype=np.float32)
+    trace = np.zeros((N + 1, M + 1), dtype=np.int32)  # 0: diag, 1: up (deletion), 2: left (insertion)
+
+    for i in range(1, N + 1):
+        dp[i][0] = i * GAP_PENALTY
+        trace[i][0] = 1
+
+    for j in range(1, M + 1):
+        dp[0][j] = j * GAP_PENALTY
+        trace[0][j] = 2
+
+    sim_cache: dict[tuple[int, int], tuple[float, PhonemeErrorType, FeedbackSeverity, int]] = {}
+    for i in range(1, N + 1):
+        for j in range(1, M + 1):
+            exp_p = expected_phonemes[i - 1]
+            rec_p = rec_ipas[j - 1]
+            sim_score, err_t, sev, bp = phoneme_similarity(exp_p, rec_p)
+            sim_cache[(i - 1, j - 1)] = (sim_score, err_t, sev, bp)
+
+            score_diag = dp[i - 1][j - 1] + sim_score
+            score_up = dp[i - 1][j] + GAP_PENALTY
+            score_left = dp[i][j - 1] + GAP_PENALTY
+
+            if score_diag >= score_up and score_diag >= score_left:
+                dp[i][j] = score_diag
+                trace[i][j] = 0
+            elif score_up >= score_left:
+                dp[i][j] = score_up
+                trace[i][j] = 1
+            else:
+                dp[i][j] = score_left
+                trace[i][j] = 2
+
+    # Backtracking
+    i = N
+    j = M
+    alignments_rev: list[tuple[int, Optional[int]]] = []
+    while i > 0 or j > 0:
+        if i > 0 and j > 0 and trace[i][j] == 0:
+            alignments_rev.append((i - 1, j - 1))
+            i -= 1
+            j -= 1
+        elif i > 0 and (j == 0 or trace[i][j] == 1):
+            alignments_rev.append((i - 1, None))  # Deletion of expected phoneme
+            i -= 1
+        else:
+            # Insertion in recognized tokens (extra sound/noise)
+            j -= 1
+
+    alignments = list(reversed(alignments_rev))
+    exp_results: list[tuple[str, Optional[str], PhonemeErrorType, FeedbackSeverity, int]] = []
+    for exp_idx in range(N):
+        exp_p = expected_phonemes[exp_idx]
+        matched_pair = next((p for p in alignments if p[0] == exp_idx), None)
+
+        if matched_pair is not None and matched_pair[1] is not None:
+            rec_idx = matched_pair[1]
+            rec_p = rec_ipas[rec_idx]
+            sim_score, err_t, sev, bp = sim_cache.get(
+                (exp_idx, rec_idx),
+                phoneme_similarity(exp_p, rec_p)
+            )
+            exp_results.append((exp_p, rec_p, err_t, sev, bp))
+        else:
+            exp_results.append((exp_p, None, "deletion", "major", 2500))
+
+    return exp_results
+
+
+def detect_voice_activity_and_trim(
+    wav: np.ndarray,
+    sr: int = 16000,
+) -> tuple[int, int, int, np.ndarray, list[float], float]:
+    """
+    Detect voice activity boundaries (speech_start_ms, speech_end_ms) and trim silence.
+    Returns: (speech_start_ms, speech_end_ms, active_speech_ms, trimmed_wav, norm_energies, final_burst_energy)
+    """
+    if len(wav) < 160:
+        return 0, 0, 0, wav, [], 0.0
+
+    frame_len = int(sr * 0.025)  # 25ms
+    hop_len = int(sr * 0.010)    # 10ms
+    n_frames = (len(wav) - frame_len) // hop_len
+
+    if n_frames <= 5:
+        dur_ms = int(len(wav) * 1000 / sr)
+        return 0, dur_ms, dur_ms, wav, [], 0.0
+
+    energies = [float(np.sum(wav[i * hop_len : i * hop_len + frame_len] ** 2)) for i in range(n_frames)]
+    max_e = max(energies) if energies else 0.0
+    if max_e <= 1e-7:
+        return 0, 0, 0, wav, [], 0.0
+
+    norm_e = [e / max_e for e in energies]
+    active_frames = [idx for idx, e in enumerate(norm_e) if e > 0.035]
+
+    if not active_frames:
+        return 0, 0, 0, wav, norm_e, 0.0
+
+    first_frame = max(0, active_frames[0] - 5)
+    last_frame = min(n_frames - 1, active_frames[-1] + 6)
+
+    speech_start_ms = int(first_frame * 10)
+    speech_end_ms = min(int(len(wav) * 1000 / sr), int((last_frame + 1) * 10 + 25))
+    active_speech_ms = max(0, speech_end_ms - speech_start_ms)
+
+    start_sample = int(speech_start_ms * sr / 1000)
+    end_sample = min(len(wav), int(speech_end_ms * sr / 1000))
+    trimmed_wav = wav[start_sample:end_sample]
+
+    # Calculate final release burst energy over the final 8 frames (80ms) of the ACTIVE SPEECH
+    active_norm_e = norm_e[first_frame : last_frame + 1]
+    tail_frames = min(8, len(active_norm_e))
+    final_burst_energy = float(np.mean(active_norm_e[-tail_frames:])) if tail_frames > 0 else 0.0
+
+    return speech_start_ms, speech_end_ms, active_speech_ms, trimmed_wav, active_norm_e, final_burst_energy
+
+
 class Wav2Vec2PhonemeService:
     def __init__(self):
         self.model_loaded = False
@@ -299,12 +559,12 @@ class Wav2Vec2PhonemeService:
                     if tid != prev and tid != 0:
                         token_str = self.tokenizer.convert_ids_to_tokens(tid)
                         if token_str and token_str not in ["<pad>", "<s>", "</s>", "<unk>", "|"]:
-                            # Clean potential stress markers
-                            clean_token = token_str.replace("ˈ", "").replace("ˌ", "").strip()
+                            # Clean potential stress markers and canonicalize IPA
+                            clean_token = normalize_ipa_symbol(token_str)
                             if clean_token:
                                 out.append({"arpabet": clean_token, "ipa": clean_token})
                     prev = tid
-                return out
+                return merge_recognized_diphthongs(out)
 
             elif self.inv_vocab:
                 # Local Drive model decoding
@@ -313,9 +573,11 @@ class Wav2Vec2PhonemeService:
                         arpabet = self.inv_vocab.get(token_id, "")
                         if arpabet:
                             ipa = self.arpabet_to_ipa.get(arpabet, arpabet)
-                            out.append({"arpabet": arpabet, "ipa": ipa})
+                            clean_ipa = normalize_ipa_symbol(ipa)
+                            if clean_ipa:
+                                out.append({"arpabet": arpabet, "ipa": clean_ipa})
                     prev = token_id
-                return out
+                return merge_recognized_diphthongs(out)
 
         except Exception as e:
             logger.error(f"Error during phoneme CTC inference: {e}")
@@ -444,49 +706,29 @@ class Wav2Vec2PhonemeService:
 
         num_words = len(words)
 
-        # 1. Acoustic Signal Pre-analysis & Feature Extraction
+        # 1. Acoustic Signal Pre-analysis with VAD & Silence Trimming
         rms = float(np.sqrt(np.mean(wav ** 2))) if wav is not None and len(wav) > 0 else 0.0
-        active_speech_ms = audio_duration_ms
+        speech_start_ms, speech_end_ms, active_speech_ms, trimmed_wav, norm_e, final_burst_energy = (
+            detect_voice_activity_and_trim(wav) if wav is not None else (0, audio_duration_ms, audio_duration_ms, wav, [], 0.0)
+        )
+
         high_energy_ms = 0.0
         initial_zcr = 0.0
-        final_burst_energy = 0.0
         syllable_peaks = 1
         peak_energies: list[float] = []
 
-        if wav is not None and len(wav) > 160:
-            active_mask = np.abs(wav) > 0.015
-            active_samples = int(np.sum(active_mask))
-            active_speech_ms = int(round((active_samples / 16000) * 1000))
+        if norm_e:
+            high_energy_ms = sum(1 for e in norm_e if e > 0.28) * 10.0
+            for fi in range(1, len(norm_e) - 1):
+                if norm_e[fi] > 0.30 and norm_e[fi] > norm_e[fi - 1] and norm_e[fi] > norm_e[fi + 1]:
+                    peak_energies.append(norm_e[fi])
+            syllable_peaks = max(1, len(peak_energies))
 
-            sr = 16000
-            frame_len = int(sr * 0.025)  # 25ms
-            hop_len = int(sr * 0.010)    # 10ms
-            n_frames = (len(wav) - frame_len) // hop_len
-
-            if n_frames > 5:
-                energies = [float(np.sum(wav[i * hop_len : i * hop_len + frame_len] ** 2)) for i in range(n_frames)]
-                max_e = max(energies) if energies else 0.0
-                if max_e > 0:
-                    norm_e = [e / max_e for e in energies]
-                    high_energy_ms = sum(1 for e in norm_e if e > 0.28) * 10.0
-
-                    # Count energy peaks (syllable detection)
-                    for fi in range(1, len(norm_e) - 1):
-                        if norm_e[fi] > 0.30 and norm_e[fi] > norm_e[fi - 1] and norm_e[fi] > norm_e[fi + 1]:
-                            peak_energies.append(norm_e[fi])
-                    syllable_peaks = max(1, len(peak_energies))
-
-                    # Measure final 80ms release burst energy for final consonant verification
-                    tail_frames = min(8, len(norm_e))
-                    if tail_frames > 2:
-                        final_burst_energy = float(np.mean(norm_e[-tail_frames:]))
-
-            # Analyze first 150ms of active speech for Initial Fricative /θ/ vs /s/ vs /t/
-            active_indices = np.where(active_mask)[0]
-            if len(active_indices) > 300:
-                first_segment = wav[active_indices[0] : min(len(wav), active_indices[0] + 2400)]
-                if len(first_segment) > 10:
-                    initial_zcr = float(np.mean(first_segment[:-1] * first_segment[1:] < 0))
+        # Initial segment ZCR on active trimmed speech for unvoiced dental fricative /θ/ check
+        if trimmed_wav is not None and len(trimmed_wav) > 400:
+            initial_segment = trimmed_wav[: min(len(trimmed_wav), 2400)]
+            if len(initial_segment) > 10:
+                initial_zcr = float(np.mean(initial_segment[:-1] * initial_segment[1:] < 0))
 
         # Check silence / inaudible recording
         is_silence = (rms < 0.010) or (active_speech_ms < 150)
@@ -494,15 +736,14 @@ class Wav2Vec2PhonemeService:
         # Check severe truncation for multi-word sentences
         is_severely_short_sentence = (num_words > 2) and (audio_duration_ms < 1800 or active_speech_ms < 900)
 
-        # Check Out-of-Vocabulary / Prompt Deviation (Target is single word like 'good', but user read a long unrelated phrase)
+        # Check Out-of-Vocabulary / Prompt Deviation (Speaking irrelevant phrases for a single word)
         is_single_word_mismatch = (num_words == 1) and (
-            (active_speech_ms > 1200 and syllable_peaks >= 3) or (audio_duration_ms > 3500)
+            (active_speech_ms > 1400 and syllable_peaks >= 3)
         )
 
         # Syllable stress anomaly check for multi-syllabic words
         has_stress_anomaly = False
         if len(peak_energies) >= 2 and num_words == 1:
-            # For words with primary stress on 1st syllable, 1st peak should dominate 2nd peak
             if peak_energies[0] < peak_energies[1] * 0.65:
                 has_stress_anomaly = True
 
@@ -510,7 +751,24 @@ class Wav2Vec2PhonemeService:
 
         word_results: list[WordResult] = []
         all_phoneme_scores: list[int] = []
-        ms_per_spoken_word = max(100, min(800, audio_duration_ms // max(1, spoken_word_count)))
+        effective_dur_ms = active_speech_ms if (num_words == 1 and active_speech_ms > 200) else audio_duration_ms
+        base_offset_ms = speech_start_ms if (num_words == 1 and active_speech_ms > 200) else 0
+        ms_per_spoken_word = max(100, min(800, effective_dur_ms // max(1, spoken_word_count)))
+
+        # Pre-compute global sequence alignment across all target phonemes
+        all_expected_phonemes: list[str] = []
+        word_phone_slices: list[tuple[int, int]] = []
+        for word in words:
+            clean_w = word.lower().strip(".,!?;:\"'")
+            if len(words) == 1 and expected_ipa_str:
+                w_ipas = parse_ipa_to_phonemes(expected_ipa_str)
+            else:
+                w_ipas = decompose_word_to_ipa(clean_w)
+            w_start = len(all_expected_phonemes)
+            all_expected_phonemes.extend(w_ipas)
+            word_phone_slices.append((w_start, len(all_expected_phonemes)))
+
+        global_aligned = align_phoneme_sequences(all_expected_phonemes, recognized_tokens)
 
         for w_idx, word in enumerate(words):
             clean_word = word.lower().strip(".,!?;:\"'")
@@ -552,8 +810,18 @@ class Wav2Vec2PhonemeService:
                 )
                 continue
 
-            w_start_ms = w_idx * ms_per_spoken_word
-            w_end_ms = min(audio_duration_ms, (w_idx + 1) * ms_per_spoken_word)
+            w_slice_start, w_slice_end = word_phone_slices[w_idx]
+            expected_ipas = all_expected_phonemes[w_slice_start:w_slice_end]
+            word_aligned = global_aligned[w_slice_start:w_slice_end]
+            num_phones = len(expected_ipas)
+
+            # Word timing boundaries
+            if num_words == 1 and active_speech_ms > 200:
+                w_start_ms = speech_start_ms
+                w_end_ms = speech_end_ms
+            else:
+                w_start_ms = base_offset_ms + w_idx * ms_per_spoken_word
+                w_end_ms = min(audio_duration_ms, base_offset_ms + (w_idx + 1) * ms_per_spoken_word)
 
             # Compute CTC Viterbi Forced Alignment directly from Wav2Vec2 emission logits
             ctc_boundaries = self.compute_ctc_forced_alignment(wav, expected_ipas, audio_duration_ms)
@@ -576,6 +844,11 @@ class Wav2Vec2PhonemeService:
                     p_start = curr_ms
                     p_end = min(w_end_ms, p_start + max(30, p_duration))
                     curr_ms = p_end
+
+                # Retrieve alignment outcome for this phoneme
+                _, align_act_p, align_err_t, align_sev, align_bp = (
+                    word_aligned[p_idx] if p_idx < len(word_aligned) else (exp_ipa, exp_ipa, "correct", "good", 9200)
+                )
 
                 if is_single_word_mismatch:
                     # User uttered an out-of-target sound (spoke multiple syllables or irrelevant phrase)
@@ -608,75 +881,90 @@ class Wav2Vec2PhonemeService:
                         severity = "major"
                         gop_score = 3000
                 else:
-                    actual_ipa = exp_ipa
-                    error_type = "correct"
-                    severity = "good"
-                    gop_score = 9200
+                    # Baseline from sequence alignment
+                    actual_ipa = align_act_p
+                    error_type = align_err_t
+                    severity = align_sev
+                    gop_score = align_bp
 
-                    # CTC alignment if available from ASR model
-                    if len(recognized_tokens) > p_idx:
-                        matched = recognized_tokens[p_idx]["ipa"]
-                        if matched != exp_ipa:
-                            actual_ipa = matched
-                            error_type = "substitution"
-                            severity = "minor" if matched in ["t", "s", "d"] else "major"
-                            gop_score = 6000 if severity == "minor" else 3000
-                    else:
-                        # --- Multi-Tier Acoustic Diagnostics against British RP Benchmark ---
-                        # Diagnostic 1: Vowel Elongation / Short Vowel vs Long Vowel
-                        # Target /ʊ/ (e.g. good, book) is a lax short vowel (~90-170ms in native RP).
-                        # If user deliberately articulates /uː/ with prolonged sustained voicing (> 210ms):
-                        if exp_ipa == "ʊ" and high_energy_ms > 210:
-                            actual_ipa = "uː"
+                    # --- Multi-Tier Acoustic Cross-Validations against British RP Benchmark ---
+                    # Diagnostic 1: Vowel Elongation / Short Vowel vs Long Vowel
+                    # If user articulates lax /ʊ/ (e.g. good, book) with prolonged sustained voicing (> 270ms and > 55% word duration):
+                    if exp_ipa == "ʊ" and high_energy_ms > 270 and (active_speech_ms > 0 and high_energy_ms > active_speech_ms * 0.55):
+                        actual_ipa = "uː"
+                        error_type = "substitution"
+                        severity = "major"
+                        gop_score = 2800
+                    elif exp_ipa == "ɪ" and high_energy_ms > 320:
+                        actual_ipa = "iː"
+                        error_type = "substitution"
+                        severity = "major"
+                        gop_score = 3200
+                    elif exp_ipa == "uː" and high_energy_ms < 100 and wav is not None and active_speech_ms > 200:
+                        actual_ipa = "ʊ"
+                        error_type = "substitution"
+                        severity = "minor"
+                        gop_score = 6500
+
+                    # Diagnostic 2: Dental Fricative /θ/ Substitution (/s/ or /t/)
+                    elif exp_ipa == "θ" and p_idx == 0:
+                        if align_act_p in ["t", "h", "f", "s"]:
+                            # Explicitly substituted with plosive or alveolar sibilant /s/
+                            actual_ipa = align_act_p
                             error_type = "substitution"
                             severity = "major"
-                            gop_score = 2800  # Major penalty: distinctly articulated long /uː/ instead of /ʊ/
-                        elif exp_ipa == "ɪ" and high_energy_ms > 260:
-                            # Stretched short /ɪ/ into long /iː/
-                            actual_ipa = "iː"
-                            error_type = "substitution"
-                            severity = "major"
-                            gop_score = 3200
-                        elif exp_ipa == "uː" and high_energy_ms < 120 and wav is not None:
-                            # Abruptly truncated /uː/
-                            actual_ipa = "ʊ"
-                            error_type = "substitution"
-                            severity = "minor"
-                            gop_score = 6200
-
-                        # Diagnostic 2: Dental Fricative /θ/ Substitution (/s/ or /t/)
-                        # If initial ZCR > 0.17 -> high-frequency alveolar fricative /s/ (e.g. 'sink' instead of 'think')
-                        elif exp_ipa == "θ" and p_idx == 0:
-                            if initial_zcr > 0.17:
+                            gop_score = 3000 if align_act_p == "s" else 3500
+                        elif align_act_p == exp_ipa:
+                            # Genuine /θ/ recognized. Check if there's harsh alveolar sibilance leak:
+                            if initial_zcr > 0.48:
                                 actual_ipa = "s"
                                 error_type = "substitution"
                                 severity = "major"
                                 gop_score = 3000
-                            elif w_idx % 2 == 1 and num_words > 1:
-                                actual_ipa = "t"
-                                error_type = "substitution"
-                                severity = "minor"
-                                gop_score = 6500
+                            else:
+                                actual_ipa = exp_ipa
+                                error_type = "correct"
+                                severity = "good"
+                                gop_score = 9200
+                        elif len(recognized_tokens) == 0 and initial_zcr > 0.38:
+                            actual_ipa = "s"
+                            error_type = "substitution"
+                            severity = "major"
+                            gop_score = 3000
 
-                        # Diagnostic 3: Final Consonant Release & Omission Check (/k/, /t/, /d/, /p/)
-                        elif exp_ipa in ["k", "t", "d", "p"] and p_idx == num_phones - 1:
-                            # If final burst energy is virtually zero and high energy ended abruptly
-                            if final_burst_energy < 0.05 and high_energy_ms > 0:
-                                # Dropped final consonant! (Nuốt âm cuối)
+                    # Diagnostic 3: Final Consonant Release & Omission Check (/k/, /t/, /d/, /p/)
+                    elif exp_ipa in ["k", "t", "d", "p"] and p_idx == num_phones - 1:
+                        if align_act_p is None:
+                            # Dropped in alignment: verify acoustic burst at the end of active speech
+                            if final_burst_energy < 0.04 and high_energy_ms > 0:
                                 actual_ipa = None
                                 error_type = "deletion"
                                 severity = "major"
                                 gop_score = 2500
-                            elif (w_idx % 2 == 1) and num_words > 1:
-                                actual_ipa = "t"
-                                error_type = "substitution"
-                                severity = "major"
-                                gop_score = 5500
+                                p_start = None
+                                p_end = None
+                            else:
+                                actual_ipa = exp_ipa
+                                error_type = "correct"
+                                severity = "good"
+                                gop_score = 8800
+                        elif align_act_p != exp_ipa:
+                            # Check if it's acceptable lenis/fortis cognate at word boundary
+                            if (exp_ipa, align_act_p) in [("d", "t"), ("t", "d"), ("ɡ", "k"), ("k", "ɡ"), ("b", "p"), ("p", "b")]:
+                                actual_ipa = align_act_p
+                                error_type = "correct"
+                                severity = "good"
+                                gop_score = 8500
 
-                        # Diagnostic 4: Syllable Stress Penalty on primary vowel
-                        if has_stress_anomaly and p_idx in vowel_indices and p_idx == vowel_indices[0]:
-                            gop_score = max(5000, gop_score - 2500)
+                    # Diagnostic 4: Syllable Stress Penalty on primary vowel
+                    if has_stress_anomaly and p_idx in vowel_indices and p_idx == vowel_indices[0]:
+                        gop_score = max(5000, gop_score - 1500)
+                        if severity == "good":
                             severity = "minor"
+
+                if error_type == "deletion":
+                    p_start = None
+                    p_end = None
 
                 phoneme_results.append(
                     PhonemeResult(
